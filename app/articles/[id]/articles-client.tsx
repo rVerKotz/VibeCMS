@@ -69,7 +69,7 @@ export default function App({
                 <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
                 <span className="font-bold text-xl tracking-tighter">VibeCMS</span>
             </a>
-            <div className="flex gap-4 text-sm font-medium">
+            <div className="flex gap-4 text-sm font-medium items-center">
                 <a href="/dashboard" className="hover:text-blue-500 transition-colors">Dashboard</a>
                 {user ? (
                    <div className="w-8 h-8 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center text-xs font-bold">

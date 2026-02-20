@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
-import { getArticleData } from "@/app/utils/actions/articles";
+import { getArticleData, incrementLikes } from "@/app/utils/actions/articles";
 import { postComment } from "@/app/utils/actions";
-import ArticlesClient from "./articles-client";
 import { Metadata } from "next";
+import ArticlesClient from "@/app/articles/[id]/articles-client";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -23,12 +23,14 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   }
 
   const { article, comments, user } = data;
+  
   return (
     <ArticlesClient 
       article={article} 
       comments={comments || []} 
       user={user} 
       postCommentAction={postComment}
+      incrementLikesAction={incrementLikes}
     />
   );
 }
