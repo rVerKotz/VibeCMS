@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { login } from "@/app/auth/actions"; 
+import { signup } from "@/app/auth/actions";
 import { GalleryVerticalEnd, ArrowLeft } from "lucide-react";
 
-export default function LoginPage() {
+export default function SignupPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center pattern-boxes pattern-opacity-100 pattern-zinc-300 pattern-bg-white pattern-size-5 dark:pattern-zinc-900 dark:pattern-boxes dark:pattern-bg-black dark:bg-black p-6 transition-colors duration-300">
       <Link
@@ -18,10 +18,10 @@ export default function LoginPage() {
             <GalleryVerticalEnd className="size-5" />
           </div>
           <h1 className="text-2xl text-black dark:text-white font-bold tracking-tight">
-            Selamat Datang
+            Buat Akun Baru
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Masuk untuk mengelola konten Anda
+            Mulai perjalanan menulis Anda hari ini
           </p>
         </div>
 
@@ -58,22 +58,39 @@ export default function LoginPage() {
               className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 dark:focus:ring-white/10 dark:focus:border-white transition"
             />
           </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="confirmPassword"
+                className="text-sm font-medium text-black dark:text-white"
+              >
+                Konfirmasi Password
+              </label>
+            </div>
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              required
+              className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 dark:focus:ring-white/10 dark:focus:border-white transition placeholder:text-zinc-400"
+            />
+          </div>
 
           <button
-            formAction={login}
+            formAction={signup}
             className="w-full bg-zinc-900 dark:bg-zinc-100 text-zinc-50 dark:text-zinc-900 py-2.5 rounded-lg font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-md active:scale-[0.98]"
           >
-            Masuk ke Dashboard
+            Buat Akun Baru
           </button>
         </form>
 
         <div className="mt-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
-          Belum punya akun?{" "}
+          Sudah punya akun?{" "}
           <Link
-            href="/signup"
+            href="/login"
             className="font-medium text-black dark:text-white hover:underline"
           >
-            Daftar sekarang
+            Masuk sekarang
           </Link>
         </div>
       </div>

@@ -10,9 +10,11 @@
     "npm:@types/react@19": "19.2.13",
     "npm:eslint-config-next@15.5.12": "15.5.12_eslint@9.39.2_typescript@5.9.3_@typescript-eslint+parser@8.55.0__eslint@9.39.2__typescript@5.9.3_eslint-plugin-import@2.32.0__eslint@9.39.2",
     "npm:eslint@9": "9.39.2",
+    "npm:lucide-react@0.563": "0.563.0_react@19.1.0",
     "npm:next@15.5.12": "15.5.12_react@19.1.0_react-dom@19.1.0__react@19.1.0",
     "npm:react-dom@19.1.0": "19.1.0_react@19.1.0",
     "npm:react@19.1.0": "19.1.0",
+    "npm:tailwindcss-bg-patterns@0.3": "0.3.0_tailwindcss@4.1.18",
     "npm:tailwindcss@4": "4.1.18",
     "npm:typescript@5": "5.9.3"
   },
@@ -1941,6 +1943,12 @@
       ],
       "bin": true
     },
+    "lucide-react@0.563.0_react@19.1.0": {
+      "integrity": "sha512-8dXPB2GI4dI8jV4MgUDGBeLdGk8ekfqVZ0BdLcrRzocGgG75ltNEmWS+gE7uokKF/0oSUuczNDT+g9hFJ23FkA==",
+      "dependencies": [
+        "react"
+      ]
+    },
     "magic-string@0.30.21": {
       "integrity": "sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==",
       "dependencies": [
@@ -2470,6 +2478,12 @@
     "supports-preserve-symlinks-flag@1.0.0": {
       "integrity": "sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w=="
     },
+    "tailwindcss-bg-patterns@0.3.0_tailwindcss@4.1.18": {
+      "integrity": "sha512-3pXCiu9MPBvfBAEYgrxpNZLZoDlVHdkofpuQ9uhVQ2RT+80BTTweL9s0uIvakfH2LRl4GCG+nncyCB+1aN1gpA==",
+      "dependencies": [
+        "tailwindcss"
+      ]
+    },
     "tailwindcss@4.1.18": {
       "integrity": "sha512-4+Z+0yiYyEtUVCScyfHCxOYP06L5Ne+JiHhY2IjR2KWMIWhJOYZKLSGZaP5HkZ8+bY0cxfzwDE5uOmzFXyIwxw=="
     },
@@ -2685,9 +2699,11 @@
         "npm:@types/react@19",
         "npm:eslint-config-next@15.5.12",
         "npm:eslint@9",
+        "npm:lucide-react@0.563",
         "npm:next@15.5.12",
         "npm:react-dom@19.1.0",
         "npm:react@19.1.0",
+        "npm:tailwindcss-bg-patterns@0.3",
         "npm:tailwindcss@4",
         "npm:typescript@5"
       ]

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "tailwindcss-bg-patterns";
 
 :root {
   --background: #ffffff;
