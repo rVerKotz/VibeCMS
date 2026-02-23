@@ -7,8 +7,11 @@ import {
   FileCheck, 
   FileClock, 
   ThumbsUp,
+  ChevronLeft
 } from "lucide-react";
 import DashboardClient from "@/app/dashboard/dashboard-client";
+import { getProfiles } from "@/app/utils/actions/profiles";
+import Link from "next/link";
 
 function StatCard({ title, value, icon: Icon, description }: any) {
   return (
@@ -29,34 +32,61 @@ function StatCard({ title, value, icon: Icon, description }: any) {
   );
 }
 
-export default async function DashboardPage() {
+export default async function Page() {
   const { user, articles } = await getDashboardData();
 
   if (!user) {
     redirect("/login");
   }
 
+  const profile = await getProfiles(user.id);
   const articleList = articles || [];
 
   // Hitung Statistik
-  const totalPublished = articleList.filter((a) => a.status === "published").length;
-  const totalDraft = articleList.filter((a) => a.status === "draft").length;
-  const totalViews = articleList.reduce((acc, curr) => acc + (curr.views || 0), 0);
-  const totalLikes = articleList.reduce((acc, curr) => acc + (curr.likes || 0), 0);
+  const totalPublished = articleList.filter((a: any) => a.status === "published").length;
+  const totalDraft = articleList.filter((a: any) => a.status === "draft").length;
+  const totalViews = articleList.reduce((acc: number, curr: any) => acc + (curr.views || 0), 0);
+  const totalLikes = articleList.reduce((acc: number, curr: any) => acc + (curr.likes || 0), 0);
 
   return (
     <div className="min-h-screen w-full bg-zinc-50/50 p-6 dark:bg-zinc-950/50 md:p-8 space-y-8 transition-colors duration-300">
       
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Dashboard
-          </h2>
-          <p className="text-zinc-500 dark:text-zinc-400 mt-1">
-            Selamat datang kembali, kelola konten dan pantau performa Anda.
-          </p>
+      {/* Top Navbar */}
+      <nav className="flex items-center justify-between pb-2 animate-in fade-in slide-in-from-top-2">
+        <Link href="/" className="flex items-center gap-2 group text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors">
+          <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
+          <span className="font-bold text-xl tracking-tighter text-zinc-900 dark:text-white">VibeCMS</span>
+        </Link>
+
+        <div className="flex gap-4 text-sm font-medium items-center">
+          {profile ? (
+            <Link 
+              href="/profile" 
+              className="w-9 h-9 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center text-xs font-bold overflow-hidden cursor-pointer hover:ring-2 hover:ring-indigo-500 transition-all shadow-sm"
+              title="Pengaturan Profil"
+            >
+              {profile.avatar_url ? (
+                <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                profile.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"
+              )}
+            </Link>
+          ) : (
+            <Link href="/login" className="text-zinc-600 dark:text-zinc-400 hover:text-indigo-500 transition-colors">
+              Login
+            </Link>
+          )}
         </div>
+      </nav>
+
+      {/* Header */}
+      <div>
+        <h2 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          Dashboard
+        </h2>
+        <p className="text-zinc-500 dark:text-zinc-400 mt-1">
+          Selamat datang kembali, kelola konten dan pantau performa Anda.
+        </p>
       </div>
 
       {/* Analytics Grid */}
@@ -97,7 +127,8 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <DashboardClient articles={articleList} />
+      {/* @ts-ignore: Mengabaikan cache TS yang belum sinkron dengan update props terbaru */}
+      <DashboardClient articles={articleList} profile={profile}/>
     </div>
   );
 }

@@ -23,19 +23,38 @@ export default async function Home() {
             </div>
             VibeCMS
           </div>
-          <nav className="flex gap-4">
-            <Link
-              href="/login"
-              className="hidden sm:flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Masuk
-            </Link>
-            <Link
-              href="/dashboard"
-              className="px-4 py-2 text-sm font-medium bg-foreground text-background rounded-full hover:opacity-90 transition-opacity"
-            >
-              Mulai Menulis
-            </Link>
+         <nav className="flex gap-4">
+            {user ? (
+              <>
+                <Link
+                  href="/profile"
+                  className="hidden sm:flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Profil
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="px-4 py-2 text-sm font-medium bg-foreground text-background rounded-lg hover:bg-foreground/90 transition-colors flex items-center"
+                >
+                  Dashboard
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="hidden sm:flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Masuk
+                </Link>
+                <Link
+                  href="/login"
+                  className="px-4 py-2 text-sm font-medium bg-foreground text-background rounded-lg hover:bg-foreground/90 transition-colors flex items-center"
+                >
+                  Mulai Menulis
+                </Link>
+              </>
+            )}
           </nav>
         </div>
       </header>
