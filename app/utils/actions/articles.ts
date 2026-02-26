@@ -23,7 +23,7 @@ export async function incrementLikes(articleId: string) {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
   await supabase.rpc("increment_likes", { row_id: Number(articleId) });
-  revalidatePath(`/article/${articleId}`);
+  revalidatePath(`/articles/${articleId}`);
 }
 
 export async function upsertArticle(formData: FormData) {
@@ -115,56 +115,53 @@ export async function getDashboardData() {
   return { user, articles: articles || [] };
 }
 
-export async function getArticleData(id: string) {
-  // 1. Validasi ID harus angka
-  if (isNaN(Number(id))) {
-    return null;
+export async function incrementViews(articleId: string) {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+  
+  try {
+    await supabase.rpc("increment_views", { row_id: Number(articleId) });
+  } catch (err) {
+    console.error("Gagal menaikkan views:", err);
   }
+
+}
+
+export async function getArticleData(id: string) {
+  if (isNaN(Number(id))) return null;
 
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
 
-  // 2. Fetch Artikel (Tanpa Join profiles dulu untuk menghindari error PGRST200)
-  const { data: articleRaw, error } = await supabase
-    .from("articles")
-    .select("*")
-    .eq("id", id)
-    .single();
+  // 1. Fetch data paralel
+  const [articleRes, authRes] = await Promise.all([
+    supabase.from("articles").select("*").eq("id", id).single(),
+    supabase.auth.getUser()
+  ]);
 
-  // Handle Error (Abaikan jika 404/PGRST116)
-  if (error && error.code !== "PGRST116") {
-    console.error(
-      "Supabase Error saat fetch artikel:",
-      JSON.stringify(error, null, 2),
-    );
-  }
+  const articleRaw = articleRes.data;
+  const authUser = authRes.data.user;
 
-  // Jika tidak ditemukan, kembalikan null
   if (!articleRaw) return null;
 
-  // 3. Fetch Profile Penulis
-  const { data: authorProfile } = await getProfiles(articleRaw.user_id);
+  // 2. Fetch profiles
+  const [authorProfile, currentUserProfile] = await Promise.all([
+    getProfiles(articleRaw.user_id),
+    authUser ? getProfiles(authUser.id) : Promise.resolve(null)
+  ]);
 
-  // 4. Gabungkan object
+  // 3. Gabungkan data
   const article = {
     ...articleRaw,
     profiles: authorProfile,
   };
 
-  // 5. Increment Views (Fire-and-forget dengan try-catch)
-  try {
-    // Pastikan nama parameter sesuai dengan fungsi RPC SQL Anda (biasanya 'row_id')
-    await supabase.rpc("increment_views", { row_id: Number(id) });
-  } catch (err) {
-    // Error increment views tidak fatal, cukup log saja
-    console.error("Gagal menaikkan views:", err);
-  }
+  const user = authUser ? {
+    ...authUser,
+    profile: currentUserProfile
+  } : null;
 
-  // 6. Fetch Komentar
- const comments = await getComments(id);
-  // 7. Cek Current User (untuk akses form komentar)
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const comments = await getComments(id);
+  
   return { article, comments, user };
 }

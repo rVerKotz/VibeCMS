@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useState, useTransition } from "react";
+import{ useState, useTransition } from "react";
+import Link from "next/link";
 import { 
   Calendar, 
   Eye, 
@@ -51,7 +52,7 @@ export default function App({
 
   // Fungsi Handle Share
   const handleShare = () => {
-    const url = typeof window !== 'undefined' ? window.location.href : '';
+    const url = typeof window !== 'undefined' ? globalThis.location.href : '';
     if (navigator.clipboard) {
       navigator.clipboard.writeText(url);
       setCopied(true);
@@ -70,15 +71,24 @@ export default function App({
                 <span className="font-bold text-xl tracking-tighter">VibeCMS</span>
             </a>
             <div className="flex gap-4 text-sm font-medium items-center">
-                <a href="/dashboard" className="hover:text-blue-500 transition-colors">Dashboard</a>
-                {user ? (
-                   <div className="w-8 h-8 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center text-xs font-bold">
-                     {user.email?.[0].toUpperCase()}
-                   </div>
-                ) : (
-                   <a href="/login" className="hover:text-blue-500 transition-colors">Login</a>
-                )}
-            </div>
+          {user.profile ? (
+            <Link 
+              href="/profile" 
+              className="w-9 h-9 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center text-xs font-bold overflow-hidden cursor-pointer hover:ring-2 hover:ring-indigo-500 transition-all shadow-sm"
+              title="Pengaturan Profil"
+            >
+              {user.profile.avatar_url ? (
+                <img src={user.profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                user.profile.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"
+              )}
+            </Link>
+          ) : (
+            <Link href="/login" className="text-zinc-600 dark:text-zinc-400 hover:text-indigo-500 transition-colors">
+              Login
+            </Link>
+          )}
+        </div>
         </div>
       </nav>
 

@@ -434,6 +434,7 @@ export default function DashboardClient(
                             )}
                     </div>
                 </div>
+                
                 {showPublishModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-sm transition-opacity">
                         <div className="bg-white dark:bg-zinc-950 w-full max-w-sm rounded-2xl p-8 shadow-xl border border-zinc-200 dark:border-zinc-800 animate-in fade-in zoom-in-95 duration-200">
