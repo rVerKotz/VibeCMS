@@ -7,16 +7,12 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-export async function getLikes(articleId: string) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
-  const { data: article } = await supabase
-    .from("articles")
-    .select("likes")
-    .eq("id", articleId)
-    .single();
-
-  return article?.likes || 0;
+export interface GetArticlesParams {
+  query?: string;
+  sortBy?: string;
+  order?: "asc" | "desc";
+  page?: number;
+  pageSize?: number;
 }
 
 export async function incrementLikes(articleId: string) {
@@ -26,66 +22,58 @@ export async function incrementLikes(articleId: string) {
   revalidatePath(`/articles/${articleId}`);
 }
 
+export async function incrementViews(articleId: string) {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+  try {
+    await supabase.rpc("increment_views", { row_id: Number(articleId) });
+  } catch (err) {
+    console.error("Gagal menaikkan views:", err);
+  }
+}
+
+export async function getLikes(articleId: string) {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+  const { data: article } = await supabase
+    .from("articles")
+    .select("likes")
+    .eq("id", articleId)
+    .single();
+  return article?.likes || 0;
+}
+
 export async function upsertArticle(formData: FormData) {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
+  const { data: { user } } = await supabase.auth.getUser();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return redirect("/login");
-  }
+  if (!user) return redirect("/login");
 
   const id = formData.get("id") as string;
   const title = formData.get("title") as string;
   const content = formData.get("content") as string;
   const status = formData.get("status") as string;
   const file = formData.get("image") as File;
-  let imageUrl = formData.get("current_image") as string; // Pertahankan gambar lama jika tidak ada upload baru
+  let imageUrl = formData.get("current_image") as string;
 
-  // 1. Handle Image Upload jika ada file baru
   if (file && file.size > 0) {
     const fileExt = file.name.split(".").pop();
     const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-    const { error: uploadError } = await supabase.storage
-      .from("images")
-      .upload(fileName, file);
-
+    const { error: uploadError } = await supabase.storage.from("images").upload(fileName, file);
     if (!uploadError) {
-      // Dapatkan Public URL
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("images").getPublicUrl(fileName);
+      const { data: { publicUrl } } = supabase.storage.from("images").getPublicUrl(fileName);
       imageUrl = publicUrl;
     }
   }
 
-  // 2. Insert atau Update
-  if (id) {
-    // Mode EDIT
-    await supabase
-      .from("articles")
-      .update({
-        title,
-        content,
-        status,
-        featured_image: imageUrl,
-      })
-      .eq("id", id)
-      .eq("user_id", user.id);
-  } else {
-    // Mode CREATE
-    await supabase.from("articles").insert({
-      title,
-      content,
-      status,
-      featured_image: imageUrl || undefined,
-      user_id: user.id,
-    });
-  }
+  const payload = { title, content, status, featured_image: imageUrl, user_id: user.id };
 
+  if (id) {
+    await supabase.from("articles").update(payload).eq("id", id).eq("user_id", user.id);
+  } else {
+    await supabase.from("articles").insert(payload);
+  }
   revalidatePath("/dashboard");
 }
 
@@ -100,68 +88,52 @@ export async function deleteArticle(formData: FormData) {
 export async function getDashboardData() {
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { user: null, articles: [] };
-
-  const { data: articles } = await supabase
-    .from("articles")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
-
+  const { data: articles } = await supabase.from("articles").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
   return { user, articles: articles || [] };
 }
 
-export async function incrementViews(articleId: string) {
+export async function getArticles(params: GetArticlesParams = {}) {
+  const { query = "", sortBy = "created_at", order = "desc", page = 1, pageSize = 5 } = params;
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
-  
-  try {
-    await supabase.rpc("increment_views", { row_id: Number(articleId) });
-  } catch (err) {
-    console.error("Gagal menaikkan views:", err);
-  }
+  const { data: { user } } = await supabase.auth.getUser();
 
+  if (!user) return { user: null, articles: [], total: 0 };
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let supabaseQuery = supabase.from("articles").select("*", { count: "exact" }).eq("user_id", user.id);
+  if (query) supabaseQuery = supabaseQuery.ilike("title", `%${query}%`);
+
+  const { data: articles, count, error } = await supabaseQuery
+    .order(sortBy, { ascending: order === "asc" })
+    .range(from, to);
+
+  if (error) console.error("Error fetching articles:", error);
+
+  return { user, articles: articles || [], total: count || 0, page, pageSize };
 }
 
 export async function getArticleData(id: string) {
   if (isNaN(Number(id))) return null;
-
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
-
-  // 1. Fetch data paralel
   const [articleRes, authRes] = await Promise.all([
     supabase.from("articles").select("*").eq("id", id).single(),
     supabase.auth.getUser()
   ]);
-
   const articleRaw = articleRes.data;
   const authUser = authRes.data.user;
-
   if (!articleRaw) return null;
-
-  // 2. Fetch profiles
   const [authorProfile, currentUserProfile] = await Promise.all([
     getProfiles(articleRaw.user_id),
     authUser ? getProfiles(authUser.id) : Promise.resolve(null)
   ]);
-
-  // 3. Gabungkan data
-  const article = {
-    ...articleRaw,
-    profiles: authorProfile,
-  };
-
-  const user = authUser ? {
-    ...authUser,
-    profile: currentUserProfile
-  } : null;
-
+  const article = { ...articleRaw, profiles: authorProfile };
+  const user = authUser ? { ...authUser, profile: currentUserProfile } : null;
   const comments = await getComments(id);
-  
   return { article, comments, user };
 }
