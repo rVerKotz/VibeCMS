@@ -1,80 +1,152 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  ChevronLeft,
-  ChevronRight,
+  ArrowRight,
+  Check,
   Clock,
   ExternalLink,
   Eye,
   Image as ImageIcon,
-  LayoutGrid,
-  List as ListIcon,
+  Lightbulb,
+  Link as LinkIcon,
+  Loader2,
+  MessageSquare,
   PenLine,
-  Search,
+  Sparkles,
   ThumbsUp,
   Trash2,
+  Upload,
   X,
 } from "lucide-react";
 import Link from "next/link";
 import { deleteArticle, upsertArticle } from "@/app/utils/actions/articles";
+import { createClient } from "@/app/utils/supabase/client";
 
 export default function DashboardClient({
   initialArticles = [],
   totalArticles = 0,
+  profile = null,
+  initialResponses = [],
+}: {
+  initialArticles: any[];
+  totalArticles: number;
+  profile: any;
+  initialResponses?: any[];
 }) {
   const router = useRouter();
+  const supabase = createClient();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
+  // State untuk Analitik AI (CSR)
+  const [aiInsights, setAiInsights] = useState<any[]>([]);
+  const [recommendations, setRecommendations] = useState<string[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   // State Utama
-  const [view, setView] = useState("card"); // "card" atau "table"
-  const [editingArticle, setEditingArticle] = useState(null);
-  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
+  const [activeTab, setActiveTab] = useState<"articles" | "responses">(
+    "articles",
+  );
+  const [editingArticle, setEditingArticle] = useState<any>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
 
-  // Parameter Navigasi
-  const currentPage = Number(searchParams.get("page")) || 1;
-  const pageSize = Number(searchParams.get("size")) || 5;
-  const sortBy = searchParams.get("sort") || "created_at";
-  const totalPages = Math.ceil(totalArticles / pageSize);
+  // Local Data State
+  const [articles, setArticles] = useState<any[]>(
+    Array.isArray(initialArticles) ? initialArticles : [],
+  );
+  const [responses, setResponses] = useState<any[]>(
+    Array.isArray(initialResponses) ? initialResponses : [],
+  );
 
-  // Fungsi sinkronisasi URL
-  const updateParams = (updates) => {
-    const params = new URLSearchParams(searchParams.toString());
-    Object.keys(updates).forEach((key) => {
-      if (updates[key]) params.set(key, String(updates[key]));
-      else params.delete(key);
-    });
-    startTransition(() => {
-      router.push(`?${params.toString()}`);
-    });
-  };
+  const username = profile?.username || "unknown";
 
-  // Debounced Search
+  // Sinkronisasi data saat props dari server berubah
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (searchQuery !== (searchParams.get("q") || "")) {
-        updateParams({ q: searchQuery, page: 1 });
-      }
-    }, 500);
-    return () => clearTimeout(timeout);
-  }, [searchQuery]);
+    setArticles(Array.isArray(initialArticles) ? initialArticles : []);
+  }, [initialArticles]);
 
-  // Update image preview saat edit
   useEffect(() => {
-    if (editingArticle) {
-      setPreviewUrl(
-        editingArticle.image_url || editingArticle.featured_image || "",
-      );
+    setResponses(Array.isArray(initialResponses) ? initialResponses : []);
+  }, [initialResponses]);
+
+  // Set Preview saat masuk mode edit
+  useEffect(() => {
+    if (editingArticle?.featured_image) {
+      setPreviewUrl(editingArticle.featured_image);
     } else {
       setPreviewUrl("");
     }
+    setImageFile(null);
   }, [editingArticle]);
 
-  const handleDelete = async (id) => {
-    if (confirm("Apakah Anda yakin ingin menghapus cerita ini?")) {
+  const performAIAnalysis = useCallback(async () => {
+    if (initialArticles.length === 0) return;
+
+    setIsAnalyzing(true);
+    try {
+      const API_URL = window.location.hostname === "localhost"
+        ? "http://localhost:10000/analyze"
+        : "https://sentiment-analysis-vibe-cms.vercel.app/analyze";
+
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          articles: initialArticles.map((a) => ({
+            id: String(a.id),
+            title: a.title,
+            views: a.views || 0,
+            likes: a.likes || 0,
+            updated_at: a.updated_at || a.created_at,
+          })),
+          comments: initialResponses.map((c) => ({
+            id: String(c.id),
+            content: c.content,
+            article_id: String(c.article_id),
+            updated_at: c.created_at,
+          })),
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setAiInsights(result.insights || []);
+        setRecommendations(result.recommendations || []);
+      }
+    } catch (error) {
+      console.error("Gagal menjalankan analisis AI di sisi klien:", error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [initialArticles, initialResponses]);
+
+  useEffect(() => {
+    performAIAnalysis();
+  }, [performAIAnalysis]);
+
+  // Handler: Judul ke Slug otomatis
+  const handleTitleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const title = e.target.value;
+    const generatedSlug = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "");
+
+    setEditingArticle((prev: any) => ({
+      ...prev,
+      title,
+      // Hanya auto-update slug jika slug masih kosong atau manual belum diutak-atik secara masif
+      slug: prev.id ? prev.slug : generatedSlug,
+    }));
+  };
+
+  // Handler: Hapus Artikel
+  const handleDelete = async (id: string) => {
+    if (confirm("Hapus cerita ini secara permanen?")) {
       startTransition(async () => {
         await deleteArticle(id);
         router.refresh();
@@ -82,464 +154,476 @@ export default function DashboardClient({
     }
   };
 
-  const formAction = async (formData) => {
-    startTransition(async () => {
-      await upsertArticle(formData);
-      setEditingArticle(null);
-      router.refresh();
-    });
-  };
+  // Handler: Drag & Drop Gambar
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith("image/")) {
+      setImageFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  }, []);
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "Baru saja";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("id-ID", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
+  // Handler: Paste Gambar dari Clipboard
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          setImageFile(file);
+          setPreviewUrl(URL.createObjectURL(file));
+        }
+      }
+    }
+  }, []);
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 py-8 overflow-x-hidden">
-      {/* HEADER & KONTROL */}
-      <div className="flex flex-col space-y-8 mb-10 border-b border-gray-100 dark:border-zinc-800 pb-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div>
-            <h1 className="text-3xl font-serif font-bold text-black dark:text-white tracking-tight">
-              Dashboard Cerita
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-              Kelola {totalArticles} publikasi Anda dengan mudah.
-            </p>
-          </div>
-
-          <button
-            onClick={() => setEditingArticle({})}
-            className="bg-black text-white dark:bg-white dark:text-black px-6 py-2.5 rounded-full text-sm font-medium hover:opacity-90 transition-all shadow-sm flex items-center gap-2 w-full md:w-auto justify-center"
-          >
-            <PenLine size={16} /> Tulis Cerita
-          </button>
-        </div>
-
-        {/* Filter Bar: Stacks vertically on mobile, horizontal on desktop */}
-        <div className="flex flex-col md:flex-row gap-4 justify-between items-center w-full">
-          {/* Search Bar Wrapper */}
-          <div className="relative w-full md:w-72">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              size={16}
-            />
-            <input
-              type="text"
-              placeholder="Cari cerita..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-zinc-800/50 border border-transparent hover:border-gray-200 dark:hover:border-zinc-700 rounded-full text-sm focus:bg-white dark:focus:bg-zinc-900 focus:border-black dark:focus:border-white focus:ring-0 transition-all outline-none"
-            />
-          </div>
-
-          {/* Controls Wrapper (Select & Toggle) - SIDE BY SIDE ON MOBILE */}
-          <div className="flex flex-row items-center justify-between gap-3 w-full md:w-auto">
-            {/* Select Dropdown */}
-            <select
-              value={sortBy}
-              onChange={(e) =>
-                updateParams({ sort: e.target.value, page: 1 })}
-              className="text-xs sm:text-sm bg-transparent border border-gray-200 dark:border-zinc-800 rounded-full pl-4 pr-10 py-2.5 font-medium text-black dark:text-white dark:bg-zinc-950/50 cursor-pointer focus:ring-0 outline-none flex-1 md:flex-none max-w-[180px] sm:max-w-none truncate"
+    <div
+      className="grid grid-cols-1 lg:grid-cols-12 gap-16"
+      onPaste={handlePaste}
+    >
+      {/* KOLOM KIRI: CONTENT (60%) */}
+      <div className="lg:col-span-7 space-y-8">
+        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-900 pb-4">
+          <div className="flex items-center gap-6 text-sm font-medium">
+            <button
+              onClick={() => setActiveTab("articles")}
+              className={`pb-4 px-1 font-bold transition-all ${
+                activeTab === "articles"
+                  ? "text-black dark:text-white border-b-2 border-black dark:border-white"
+                  : "text-zinc-400 hover:text-black dark:hover:text-white"
+              }`}
             >
-              <option value="created_at">Urutkan: Terbaru</option>
-              <option value="views">Urutkan: Terpopuler</option>
-              <option value="likes">Urutkan: Paling Disukai</option>
-            </select>
-
-            {/* Toggle Tampilan Buttons */}
-            <div className="flex items-center bg-gray-100 dark:bg-zinc-800 p-1 rounded-full shrink-0">
-              <button
-                onClick={() => setView("card")}
-                className={`p-2 rounded-full transition-all ${
-                  view === "card"
-                    ? "bg-white dark:bg-zinc-700 shadow-sm text-black dark:text-white"
-                    : "text-gray-400 hover:text-gray-600"
-                }`}
-                title="Tampilan Kartu"
-              >
-                <LayoutGrid size={18} />
-              </button>
-              <button
-                onClick={() => setView("table")}
-                className={`p-2 rounded-full transition-all ${
-                  view === "table"
-                    ? "bg-white dark:bg-zinc-700 shadow-sm text-black dark:text-white"
-                    : "text-gray-400 hover:text-gray-600"
-                }`}
-                title="Tampilan Tabel"
-              >
-                <ListIcon size={18} />
-              </button>
-            </div>
+              Articles
+            </button>
+            <button
+              onClick={() => setActiveTab("responses")}
+              className={`pb-4 px-1 font-bold transition-all ${
+                activeTab === "responses"
+                  ? "text-black dark:text-white border-b-2 border-black dark:border-white"
+                  : "text-zinc-400 hover:text-black dark:hover:text-white"
+              }`}
+            >
+              Responses
+            </button>
           </div>
+          {activeTab === "articles" && (
+            <button
+              onClick={() =>
+                setEditingArticle({
+                  status: "draft",
+                  title: "",
+                  content: "",
+                  slug: "",
+                })}
+              className="text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-black dark:hover:text-white transition-colors"
+            >
+              + Write Story
+            </button>
+          )}
         </div>
-      </div>
 
-      {/* AREA KONTEN */}
-      <div
-        className={`transition-opacity duration-200 ${
-          isPending ? "opacity-50" : "opacity-100"
-        }`}
-      >
-        {initialArticles.length === 0
-          ? (
-            <div className="py-24 text-center">
-              <p className="text-gray-400 dark:text-gray-500 text-lg font-serif italic">
-                Tidak ada cerita yang ditemukan.
-              </p>
-            </div>
-          )
-          : (
-            <>
-              {view === "card"
+        <div
+          className={`space-y-10 transition-opacity ${
+            isPending ? "opacity-50" : "opacity-100"
+          }`}
+        >
+          {activeTab === "articles"
+            ? (
+              articles.length === 0
                 ? (
-                  /* TAMPILAN KARTU */
-                  <div className="space-y-12">
-                    {initialArticles.map((article) => (
-                      <div
-                        key={article.id}
-                        className="group flex flex-col-reverse md:flex-row md:items-center justify-between gap-8 pb-10 border-b border-gray-100 dark:border-zinc-800 last:border-0 last:pb-0"
-                      >
-                        <div className="flex-1 space-y-4">
-                          <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-                            <span className="flex items-center gap-1">
-                              <Clock size={14} />
-                              {formatDate(article.created_at)}
-                            </span>
-                            <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-zinc-600">
-                            </span>
-                            <span
-                              className={`px-2 py-0.5 font-bold uppercase tracking-tighter rounded ${
-                                article.status === "published"
-                                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400"
-                                  : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-                              }`}
-                            >
-                              {article.status === "published"
-                                ? "Diterbitkan"
-                                : "Draf"}
-                            </span>
-                          </div>
-
-                          <Link
-                            href={`/articles/${article.id}`}
-                            className="block group"
-                          >
-                            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2 leading-tight mb-2">
-                              {article.title}
-                            </h2>
-                            <p className="text-gray-500 dark:text-gray-400 text-base sm:text-lg line-clamp-2 leading-relaxed font-serif">
-                              {article.content?.substring(0, 180) ||
-                                "Belum ada konten tulisan..."}
-                            </p>
-                          </Link>
-
-                          <div className="flex items-center justify-between pt-2">
-                            <div className="flex items-center gap-4 text-xs font-semibold text-gray-400 uppercase tracking-widest">
-                              <span className="flex items-center gap-1.5">
-                                <Eye size={14} /> {article.views || 0}
-                              </span>
-                              <span className="flex items-center gap-1.5">
-                                <ThumbsUp size={14} /> {article.likes || 0}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-all">
-                              <button
-                                onClick={() => setEditingArticle(article)}
-                                className="p-2.5 text-gray-400 hover:text-black dark:hover:text-white transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800"
-                              >
-                                <PenLine size={18} />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(article.id)}
-                                className="p-2.5 text-gray-400 hover:text-red-600 transition-colors rounded-full hover:bg-red-50 dark:hover:bg-red-900/10"
-                              >
-                                <Trash2 size={18} />
-                              </button>
-                              <Link
-                                href={`/articles/${article.id}`}
-                                className="p-2.5 text-gray-400 hover:text-black dark:hover:text-white transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800"
-                              >
-                                <ExternalLink size={18} />
-                              </Link>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="w-full md:w-56 h-56 md:h-36 shrink-0">
-                          {article.featured_image || article.image_url
-                            ? (
-                              <img
-                                src={article.featured_image ||
-                                  article.image_url}
-                                alt={article.title}
-                                className="w-full h-full object-cover rounded-2xl bg-gray-50 border border-gray-100 dark:border-zinc-800 shadow-sm transition-transform group-hover:scale-[1.02]"
-                              />
-                            )
-                            : (
-                              <div className="w-full h-full bg-gray-50 dark:bg-zinc-800/50 border border-gray-100 dark:border-zinc-800 flex items-center justify-center text-gray-300 dark:text-zinc-600 rounded-2xl">
-                                <ImageIcon size={32} />
-                              </div>
+                  <p className="text-zinc-400 italic py-10 font-serif">
+                    Belum ada cerita. Mulai menulis sekarang.
+                  </p>
+                )
+                : (
+                  articles.map((article) => (
+                    <div
+                      key={article.id}
+                      className="group flex items-start justify-between gap-6"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-300">
+                            {new Date(article.created_at).toLocaleDateString(
+                              "en-US",
+                              { month: "short", day: "numeric" },
                             )}
+                          </span>
+                          {article.status === "draft" && (
+                            <span className="bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 rounded text-[9px] font-bold text-zinc-500 uppercase tracking-tighter">
+                              Draft
+                            </span>
+                          )}
+                        </div>
+                        <Link href={`/${username}/${article.slug}`}>
+                          <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 leading-snug group-hover:text-zinc-500 transition-colors line-clamp-2">
+                            {article.title}
+                          </h2>
+                          <p className="mt-2 text-zinc-500 dark:text-zinc-400 text-sm line-clamp-2 font-serif leading-relaxed">
+                            {article.content?.replace(/<[^>]*>/g, "").substring(
+                              0,
+                              120,
+                            )}...
+                          </p>
+                        </Link>
+                        <div className="flex items-center gap-6 mt-4 opacity-0 group-hover:opacity-100 transition-all">
+                          <button
+                            onClick={() => setEditingArticle(article)}
+                            className="text-zinc-400 hover:text-blue-500 transition-colors"
+                          >
+                            <PenLine size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(article.id)}
+                            className="text-zinc-400 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         </div>
                       </div>
-                    ))}
+                      <div className="w-24 h-24 md:w-32 md:h-32 shrink-0 bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded overflow-hidden">
+                        {article.featured_image && (
+                          <img
+                            src={article.featured_image}
+                            className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+                            alt=""
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )
+            )
+            : (
+              responses.length === 0
+                ? (
+                  <div className="py-20 text-center space-y-3">
+                    <MessageSquare className="w-12 h-12 text-zinc-200 mx-auto mb-4" />
+                    <p className="text-zinc-400 italic">
+                      Belum ada tanggapan pada tulisan Anda.
+                    </p>
                   </div>
                 )
                 : (
-                  /* TAMPILAN TABEL */
-                  <div className="border border-gray-200 dark:border-zinc-800 rounded-2xl overflow-x-auto bg-white dark:bg-zinc-900 shadow-sm">
-                    <table className="w-full text-sm text-left border-collapse min-w-[600px]">
-                      <thead>
-                        <tr className="bg-gray-50 dark:bg-zinc-950 border-b border-gray-200 dark:border-zinc-800 text-xs font-bold text-gray-400 uppercase tracking-widest">
-                          <th className="px-6 py-4">Judul Artikel</th>
-                          <th className="px-6 py-4 w-32">Status</th>
-                          <th className="px-6 py-4 text-center w-24">
-                            Statistik
-                          </th>
-                          <th className="px-6 py-4 text-right w-40">Aksi</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100 dark:divide-zinc-800">
-                        {initialArticles.map((article) => (
-                          <tr
-                            key={article.id}
-                            className="hover:bg-gray-50/50 dark:hover:bg-zinc-800/30 transition-colors group"
+                  responses.map((response: any) => (
+                    <div
+                      key={response.id}
+                      className="group pb-8 border-b border-zinc-50 dark:border-zinc-900/50 last:border-0"
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <img
+                          src={response.profiles?.avatar_url ||
+                            "/default-avatar.png"}
+                          className="w-6 h-6 rounded-full grayscale group-hover:grayscale-0 transition-all"
+                          alt=""
+                        />
+                        <div className="text-xs">
+                          <span className="font-bold text-zinc-900 dark:text-white">
+                            {response.profiles?.full_name}
+                          </span>
+                          <span className="text-zinc-400 mx-2">on</span>
+                          <Link
+                            href={`/${username}/${response.articles?.slug}`}
+                            className="text-zinc-500 hover:text-black dark:hover:text-white underline decoration-zinc-200 underline-offset-4"
                           >
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700">
-                                  <img
-                                    src={article.featured_image ||
-                                      article.image_url ||
-                                      "https://placehold.co/100x100?text=No+Img"}
-                                    alt=""
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      e.target.style.opacity = 0;
-                                    }}
-                                  />
-                                </div>
-                                <div className="min-w-0">
-                                  <span className="font-bold text-gray-900 dark:text-zinc-100 block truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                    {article.title}
-                                  </span>
-                                  <span className="text-[10px] text-gray-400">
-                                    {formatDate(article.created_at)}
-                                  </span>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span
-                                className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
-                                  article.status === "published"
-                                    ? "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
-                                    : "bg-zinc-50 text-zinc-500 border-zinc-100 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700"
-                                }`}
-                              >
-                                {article.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex flex-col items-center gap-1 text-[10px] font-bold text-gray-500">
-                                <span className="flex items-center gap-1">
-                                  <Eye size={12} /> {article.views || 0}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <ThumbsUp size={12} /> {article.likes || 0}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <button
-                                  onClick={() => setEditingArticle(article)}
-                                  className="p-2 text-gray-400 hover:text-black dark:hover:text-white"
-                                  title="Edit"
-                                >
-                                  <PenLine size={16} />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(article.id)}
-                                  className="p-2 text-gray-400 hover:text-red-600"
-                                  title="Hapus"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                                <Link
-                                  href={`/articles/${article.id}`}
-                                  className="p-2 text-gray-400 hover:text-blue-500"
-                                  title="Lihat"
-                                >
-                                  <ExternalLink size={16} />
-                                </Link>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-            </>
-          )}
+                            {response.articles?.title}
+                          </Link>
+                        </div>
+                      </div>
+                      <p className="text-sm text-zinc-600 dark:text-zinc-400 font-serif italic mb-2 line-clamp-3">
+                        "{response.content}"
+                      </p>
+                      <div className="text-[10px] text-zinc-300 font-bold uppercase tracking-widest">
+                        {new Date(response.created_at).toLocaleDateString(
+                          "en-US",
+                          { month: "short", day: "numeric", year: "numeric" },
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )
+            )}
+        </div>
       </div>
 
-      {/* PAGINASI */}
-      {totalPages > 1 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between border-t border-gray-100 dark:border-zinc-800 pt-8 mt-12 gap-4">
-          <button
-            disabled={currentPage <= 1 || isPending}
-            onClick={() => updateParams({ page: currentPage - 1 })}
-            className="flex items-center gap-2 px-6 py-2 text-sm font-bold text-gray-500 hover:text-black dark:hover:text-white disabled:opacity-30 transition-all rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 border border-transparent hover:border-gray-200 dark:hover:border-zinc-700 w-full sm:w-auto justify-center"
-          >
-            <ChevronLeft size={16} /> Sebelumnya
-          </button>
-
-          <div className="flex items-center gap-2 overflow-x-auto max-w-full pb-2 sm:pb-0">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
-              const isCurrent = currentPage === p;
-              if (
-                totalPages > 7 && Math.abs(p - currentPage) > 1 && p !== 1 &&
-                p !== totalPages
-              ) return null;
-              return (
-                <button
-                  key={p}
-                  onClick={() => updateParams({ page: p })}
-                  className={`w-10 h-10 shrink-0 rounded-full text-xs font-bold transition-all border ${
-                    isCurrent
-                      ? "bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-lg"
-                      : "text-gray-400 hover:text-black dark:hover:text-white border-transparent hover:border-gray-200 dark:hover:border-zinc-700"
-                  }`}
-                >
-                  {p}
-                </button>
-              );
-            })}
+      {/* KOLOM KANAN: INSIGHTS & AI (40%) */}
+      <div className="lg:col-span-5 border-none lg:border-l border-zinc-100 dark:border-zinc-900 lg:pl-12 space-y-12">
+        <section>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <Sparkles
+                className={`w-4 h-4 ${
+                  isAnalyzing
+                    ? "animate-pulse text-indigo-500"
+                    : "text-indigo-400"
+                }`}
+              />
+              <h3 className="text-sm font-black uppercase tracking-widest">
+                VibeAI Semantic Insights
+              </h3>
+            </div>
+            {isAnalyzing && (
+              <Loader2 className="w-3 h-3 animate-spin text-zinc-300" />
+            )}
           </div>
 
-          <button
-            disabled={currentPage >= totalPages || isPending}
-            onClick={() => updateParams({ page: currentPage + 1 })}
-            className="flex items-center gap-2 px-6 py-2 text-sm font-bold text-gray-500 hover:text-black dark:hover:text-white disabled:opacity-30 transition-all rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 border border-transparent hover:border-gray-200 dark:hover:border-zinc-700 w-full sm:w-auto justify-center"
-          >
-            Selanjutnya <ChevronRight size={16} />
-          </button>
-        </div>
-      )}
-
-      {/* MODAL EDITOR */}
-      {editingArticle && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-md overflow-y-auto">
-          <div className="bg-white dark:bg-zinc-950 w-full max-w-4xl rounded-3xl shadow-2xl p-6 sm:p-10 relative my-auto border border-gray-100 dark:border-zinc-800">
-            <button
-              onClick={() => setEditingArticle(null)}
-              className="absolute top-6 right-6 p-2.5 text-gray-400 hover:text-black dark:hover:text-white transition-all bg-gray-50 dark:bg-zinc-900 rounded-full"
-            >
-              <X size={20} />
-            </button>
-
-            <div className="flex items-center gap-3 mb-10">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white dark:bg-white dark:text-black">
-                <PenLine size={20} />
-              </div>
-              <h2 className="text-2xl font-serif font-bold text-black dark:text-white tracking-tight">
-                {editingArticle.id ? "Edit Tulisan" : "Mulai Menulis"}
-              </h2>
-            </div>
-
-            <form action={formAction} className="space-y-8">
-              {editingArticle.id && (
-                <input type="hidden" name="id" value={editingArticle.id} />
-              )}
-
-              <div className="space-y-6">
-                <input
-                  type="text"
-                  name="title"
-                  defaultValue={editingArticle.title || ""}
-                  placeholder="Judul Cerita Anda..."
-                  className="w-full text-4xl font-serif font-bold bg-transparent border-0 border-b border-transparent hover:border-gray-100 dark:hover:border-zinc-800 focus:border-gray-200 dark:focus:border-zinc-700 pb-2 outline-none focus:ring-0 transition-all placeholder-gray-200 dark:placeholder-zinc-800 text-black dark:text-white"
-                  required
-                />
-                <textarea
-                  name="content"
-                  defaultValue={editingArticle.content || ""}
-                  placeholder="Ceritakan kisah Anda di sini..."
-                  rows={12}
-                  className="w-full text-xl font-serif bg-transparent border-0 border-b border-transparent hover:border-gray-100 dark:hover:border-zinc-800 focus:border-gray-200 dark:focus:border-zinc-700 pb-2 outline-none focus:ring-0 transition-all placeholder-gray-200 dark:placeholder-zinc-800 text-gray-800 dark:text-gray-200 resize-none leading-relaxed"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                    Status Publikasi
-                  </label>
-                  <select
-                    name="status"
-                    defaultValue={editingArticle.status || "draft"}
-                    className="w-full bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-black dark:focus:border-white transition-all text-black dark:text-white appearance-none cursor-pointer font-medium"
-                  >
-                    <option value="draft">Simpan sebagai Draf</option>
-                    <option value="published">Terbitkan Sekarang</option>
-                  </select>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                    URL Gambar Sampul
-                  </label>
-                  <input
-                    type="url"
-                    name="image_url"
-                    value={previewUrl}
-                    onChange={(e) => setPreviewUrl(e.target.value)}
-                    placeholder="Contoh: https://images.unsplash.com/..."
-                    className="w-full bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl px-5 py-3.5 text-sm outline-none focus:border-black dark:focus:border-white transition-all text-black dark:text-white font-medium"
-                  />
-                  {previewUrl && (
-                    <div className="w-full h-40 rounded-2xl overflow-hidden border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900 mt-4 shadow-inner">
-                      <img
-                        src={previewUrl}
-                        alt="Pratinjau"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
+          <div className="p-8 bg-zinc-50 dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 shadow-inner">
+            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-6">
+              Poin Dampak Real-time
+            </p>
+            <div className="space-y-6">
+              {aiInsights.length > 0
+                ? aiInsights.map((insight: any, idx: number) => (
+                  <div key={idx} className="space-y-2">
+                    <div className="flex justify-between text-xs font-bold">
+                      <span className="truncate pr-4">{insight.name}</span>
+                      <span className="text-zinc-400 font-mono">
+                        +{insight.views} pts
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-black dark:bg-white transition-all duration-1000"
+                        style={{
+                          width: `${
+                            Math.min(
+                              (insight.views / (aiInsights[0]?.views || 1)) *
+                                100,
+                              100,
+                            )
+                          }%`,
                         }}
                       />
                     </div>
-                  )}
+                  </div>
+                ))
+                : (
+                  <p className="text-xs text-zinc-400 italic font-serif">
+                    {isAnalyzing
+                      ? "AI sedang membaca narasi Anda..."
+                      : "Data belum cukup untuk dianalisis secara semantik."}
+                  </p>
+                )}
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <div className="flex items-center gap-2 mb-6">
+            <Lightbulb className="w-4 h-4 text-amber-500" />
+            <h3 className="text-sm font-black uppercase tracking-widest">
+              Smart Recommendation
+            </h3>
+          </div>
+          <div className="space-y-4">
+            {recommendations.length > 0
+              ? recommendations.map((text, idx) => (
+                <div
+                  key={idx}
+                  className="group p-5 bg-white dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-900 rounded-2xl shadow-sm hover:shadow-lg transition-all border-l-4 border-l-amber-500"
+                >
+                  <div className="flex justify-between items-start gap-4">
+                    <p className="text-xs font-serif leading-relaxed text-zinc-600 dark:text-zinc-300 italic">
+                      {text}
+                    </p>
+                    <ArrowRight className="w-3 h-3 text-zinc-300 group-hover:text-amber-500 transition-colors" />
+                  </div>
                 </div>
+              ))
+              : (
+                <p className="text-xs text-zinc-400 italic font-serif">
+                  Tulis lebih banyak cerita untuk mendapatkan saran dari AI.
+                </p>
+              )}
+          </div>
+        </section>
+      </div>
+
+      {/* ZEN EDITOR MODAL */}
+      {editingArticle && (
+        <div className="fixed inset-0 z-[100] bg-white dark:bg-zinc-950 flex flex-col animate-in fade-in duration-300">
+          <div className="flex justify-between items-center px-6 py-4 border-b border-zinc-100 dark:border-zinc-900">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setEditingArticle(null)}
+                className="text-zinc-400 hover:text-black dark:hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+              <span className="text-xs text-zinc-400 border-l border-zinc-200 dark:border-zinc-800 pl-4 font-medium italic">
+                Writing in Vibe by {profile?.full_name}
+              </span>
+            </div>
+            <div className="flex items-center gap-4">
+              <select
+                name="status"
+                form="article-form"
+                defaultValue={editingArticle.status || "draft"}
+                className="bg-transparent text-[10px] font-bold uppercase tracking-widest outline-none cursor-pointer hover:text-blue-500 transition-colors"
+              >
+                <option value="draft">Draft</option>
+                <option value="published">Publish</option>
+              </select>
+              <button
+                onClick={() =>
+                  (document.getElementById("article-form") as HTMLFormElement)
+                    ?.requestSubmit()}
+                disabled={isPending}
+                className="bg-black dark:bg-white text-white dark:text-black px-8 py-2 rounded-full text-xs font-bold hover:opacity-80 disabled:opacity-50 transition-all flex items-center gap-2 shadow-lg"
+              >
+                {isPending
+                  ? <Loader2 className="w-3 h-3 animate-spin" />
+                  : <Check size={14} />}
+                Simpan
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-5xl mx-auto px-6 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
+              <div className="lg:col-span-8 space-y-8">
+                <form
+                  id="article-form"
+                  action={async (fd) => {
+                    if (imageFile) fd.set("image", imageFile);
+                    startTransition(async () => {
+                      await upsertArticle(fd);
+                      setEditingArticle(null);
+                      router.refresh();
+                    });
+                  }}
+                  className="space-y-8"
+                >
+                  {editingArticle.id && (
+                    <input type="hidden" name="id" value={editingArticle.id} />
+                  )}
+                  <input
+                    type="hidden"
+                    name="featured_image"
+                    value={editingArticle.featured_image || ""}
+                  />
+
+                  <textarea
+                    name="title"
+                    value={editingArticle.title || ""}
+                    onChange={handleTitleChange}
+                    placeholder="Judul Cerita..."
+                    rows={1}
+                    className="w-full text-5xl font-bold bg-transparent border-none outline-none placeholder:text-zinc-200 dark:placeholder:text-zinc-800 resize-none h-auto overflow-hidden leading-tight"
+                  />
+
+                  <textarea
+                    name="content"
+                    defaultValue={editingArticle.content || ""}
+                    placeholder="Mulai menulis cerita Anda..."
+                    className="w-full text-xl font-serif bg-transparent border-none outline-none resize-none placeholder:text-zinc-200 dark:placeholder:text-zinc-800 min-h-[600px] leading-relaxed"
+                  />
+                </form>
               </div>
 
-              <div className="flex justify-end gap-3 pt-10 mt-6 border-t border-gray-100 dark:border-zinc-800">
-                <button
-                  type="button"
-                  onClick={() => setEditingArticle(null)}
-                  className="px-8 py-3 text-sm font-bold text-gray-400 hover:text-black dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isPending}
-                  className="px-10 py-3 bg-black text-white dark:bg-white dark:text-black text-sm font-bold rounded-full hover:opacity-90 transition-all disabled:opacity-50 shadow-xl"
-                >
-                  {isPending ? "Sedang Menyimpan..." : "Simpan Tulisan"}
-                </button>
+              <div className="lg:col-span-4 space-y-10 border-l border-zinc-100 dark:border-zinc-900 lg:pl-10">
+                <div className="space-y-4">
+                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">
+                    Gambar Sampul
+                  </label>
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleDrop}
+                    className={`relative aspect-video bg-zinc-50 dark:bg-zinc-900 border-2 border-dashed rounded-xl overflow-hidden flex flex-col items-center justify-center transition-all ${
+                      isDragging
+                        ? "border-black dark:border-white"
+                        : "border-zinc-200 dark:border-zinc-800"
+                    }`}
+                  >
+                    {previewUrl
+                      ? (
+                        <>
+                          <img
+                            src={previewUrl}
+                            className="w-full h-full object-cover"
+                            alt="Cover"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <label className="cursor-pointer bg-white text-black px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                              Ganti
+                            </label>
+                          </div>
+                        </>
+                      )
+                      : (
+                        <div className="text-center p-4">
+                          <Upload className="w-6 h-6 text-zinc-300 mx-auto mb-2" />
+                          <p className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest">
+                            Drag or Paste Image
+                          </p>
+                        </div>
+                      )}
+                    <input
+                      type="file"
+                      name="image"
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setImageFile(file);
+                          setPreviewUrl(URL.createObjectURL(file));
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <div className="relative group">
+                    <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+                    <input
+                      name="image_url"
+                      form="article-form"
+                      value={editingArticle.image_url || ""}
+                      placeholder="Atau tempel link gambar..."
+                      className="w-full bg-zinc-50 dark:bg-zinc-900 pl-10 pr-3 py-2 rounded-xl text-[11px] outline-none border border-transparent focus:border-zinc-200 dark:focus:border-zinc-700 transition-all shadow-inner"
+                      onChange={(e) => {
+                        setPreviewUrl(e.target.value);
+                        setEditingArticle((prev: any) => ({
+                          ...prev,
+                          image_url: e.target.value,
+                        }));
+                        setImageFile(null);
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">
+                    URL Slug (Custom)
+                  </label>
+                  <div className="space-y-2">
+                    <input
+                      name="slug"
+                      form="article-form"
+                      value={editingArticle.slug || ""}
+                      onChange={(e) =>
+                        setEditingArticle({
+                          ...editingArticle,
+                          slug: e.target.value,
+                        })}
+                      placeholder="nama-slug-cerita"
+                      className="w-full bg-zinc-50 dark:bg-zinc-900 p-4 rounded-xl text-xs font-mono outline-none border border-transparent focus:border-zinc-300 dark:focus:border-zinc-700 transition-all shadow-inner"
+                    />
+                    <p className="text-[9px] text-zinc-400 italic font-medium px-1">
+                      Preview: vibe.com/{username}/{editingArticle.slug ||
+                        "..."}
+                    </p>
+                  </div>
+                </div>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

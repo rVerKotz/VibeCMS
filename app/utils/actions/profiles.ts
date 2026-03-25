@@ -6,8 +6,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 export async function getProfiles(user_id: string) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient(cookies());
 
   const { data: profiles } = await supabase
     .from("profiles")
@@ -19,8 +18,7 @@ export async function getProfiles(user_id: string) {
 }
 
 export async function updateProfile(formData: FormData) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient(cookies());
   
   // Securely get the user from the authenticated session.
   // This cannot be spoofed by a malicious client.
@@ -56,8 +54,7 @@ export async function updateProfile(formData: FormData) {
 }
 
 export async function updatePassword(formData: FormData) {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient(cookies());
   
   const newPassword = formData.get("new_password") as string;
 
