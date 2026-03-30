@@ -6,7 +6,7 @@ import { cookies } from 'next/headers'
 import { createClient } from '@/app/utils/supabase/server'
 
 export async function login(formData: FormData) {
-  const supabase = createClient(cookies())
+  const supabase = await createClient()
 
   const email = formData.get('email') as string
   const password = formData.get('password') as string
@@ -19,6 +19,7 @@ export async function login(formData: FormData) {
   if (error) {
     const cookieStore = await cookies()
     cookieStore.set('auth_error', error.message, { maxAge: 10, path: '/' })
+    console.log(error)
     return redirect('/login')
   }
 
@@ -27,7 +28,7 @@ export async function login(formData: FormData) {
 }
 
 export async function signup(formData: FormData) {
-  const supabase = createClient(cookies())
+  const supabase = await createClient()
 
   const email = formData.get('email') as string
   const password = formData.get('password') as string
@@ -50,12 +51,12 @@ export async function signup(formData: FormData) {
     return redirect('/login')
   }
 
-  revalidatePath('/', 'layout')
+  revalidatePath('/dashboard', 'layout')
   redirect('/dashboard')
 }
 
 export async function signout() {
-  const supabase = await createClient(cookies())
+  const supabase = await createClient()
   await supabase.auth.signOut()
-  redirect('/login')
+  return redirect('/login')
 }

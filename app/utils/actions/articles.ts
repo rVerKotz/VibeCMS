@@ -15,7 +15,7 @@ export interface GetArticlesParams {
   pageSize?: number;
 }
 
-export async function generateSlug(title: string) {
+export function generateSlug(title: string) {
   const baseSlug = title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric characters with hyphens
@@ -27,13 +27,13 @@ export async function generateSlug(title: string) {
 }
 
 export async function incrementLikes(articleId: string) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
   await supabase.rpc("increment_likes", { row_id: articleId });
   revalidatePath(`/articles/${articleId}`);
 }
 
 export async function incrementViews(articleId: string) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
   try {
     await supabase.rpc("increment_views", { row_id: articleId });
   } catch (err) {
@@ -42,7 +42,7 @@ export async function incrementViews(articleId: string) {
 }
 
 export async function getLikes(articleId: string) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
   const { data: article } = await supabase
     .from("articles")
     .select("likes")
@@ -52,7 +52,7 @@ export async function getLikes(articleId: string) {
 }
 
 export async function deleteArticle(id: string) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
   
   const { error } = await supabase
     .from("articles")
@@ -69,7 +69,7 @@ export async function deleteArticle(id: string) {
 }
 
 export async function upsertArticle(formData: FormData) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) return redirect("/login");
@@ -145,7 +145,7 @@ export async function upsertArticle(formData: FormData) {
 
 
 export async function getDashboardData() {
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { user: null, articles: [] };
   const { data: articles } = await supabase.from("articles").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
@@ -154,7 +154,7 @@ export async function getDashboardData() {
 
 export async function getArticles(params: GetArticlesParams = {}) {
   const { query = "", sortBy = "created_at", order = "desc", page = 1, pageSize = 5 } = params;
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) return { user: null, articles: [], total: 0 };
@@ -175,7 +175,7 @@ export async function getArticles(params: GetArticlesParams = {}) {
 }
 
 export async function getArticleData(id: string) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
   const [articleRes, authRes] = await Promise.all([
     supabase.from("articles").select("*").eq("id", id).single(),
     supabase.auth.getUser()
@@ -194,9 +194,7 @@ export async function getArticleData(id: string) {
 }
 
 export async function getArticleByUsernameAndSlug(username: string, slug: string) {
-  
-  const supabase = await createClient(cookieStore);
-  
+  const supabase = await createClient();
   // 1. Decode URL parameters (e.g., %40 back to @)
   const decodedUsername = decodeURIComponent(username);
   

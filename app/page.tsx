@@ -5,7 +5,7 @@ import Link from "next/link";
 
 export default async function Home() {
   // 1. Inisialisasi Supabase Client
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
 
   // 2. Cek session user
   const {

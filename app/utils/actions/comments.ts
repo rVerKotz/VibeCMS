@@ -6,7 +6,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 export async function postComment(formData: FormData) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
   const articleId = formData.get("article_id");
   const content = formData.get("content");
 
@@ -25,7 +25,7 @@ export async function postComment(formData: FormData) {
 }
 
 export async function deleteComment(commentId: string, articleId: string) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
 
   const {
     data: { user },
@@ -38,7 +38,7 @@ export async function deleteComment(commentId: string, articleId: string) {
 }
 
 export async function updateComment(formData: FormData) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
   const commentId = formData.get("id") as string;
   const content = formData.get("content") as string;
   const articleId = formData.get("article_id") as string;
@@ -52,7 +52,7 @@ export async function updateComment(formData: FormData) {
 }
 
 export async function getCommentsbyArticleId(articleId: string) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
 
   const { data: commentsRaw } = await supabase
     .from("comments")
@@ -85,7 +85,7 @@ export async function getCommentsbyArticleId(articleId: string) {
 export async function getCommentsbyArticleIds(articleIds: string[]) {
   if (!articleIds || articleIds.length === 0) return [];
 
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("article_view")
