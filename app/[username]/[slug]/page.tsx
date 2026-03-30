@@ -5,9 +5,9 @@ import {
   getArticleData,
   incrementLikes,
   incrementViews,
-} from "@/app/utils/actions/articles.ts";
-import { postComment } from "@/app/utils/actions/comments.ts";
-import ArticlesClient from "@/app/[username]/[slug]/articles-client.tsx";
+} from "@/app/utils/actions/articles";
+import { postComment } from "@/app/utils/actions/comments";
+import ArticlesClient from "@/app/[username]/[slug]/articles-client";
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string; slug: string }>; }): Promise<Metadata> {
   const { username, slug } = await params;
@@ -46,7 +46,7 @@ export default async function Page({ params }: { params: Promise<{ username: str
   return (
     <ArticlesClient
       article={article}
-      comments={comments || []}
+      comments={comments as any || []}
       user={user}
       postCommentAction={postComment}
       incrementLikesAction={incrementLikes}

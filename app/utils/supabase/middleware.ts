@@ -1,38 +1,38 @@
+import { NextRequest } from 'next/server';
+import { createI18nMiddleware } from 'next-international/middleware';
 
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { type NextRequest, NextResponse } from "next/server";
+import { type CookieOptions, createServerClient } from '@supabase/ssr';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+const handleI18nRouting = createI18nMiddleware({
+  locales: ['en', 'fr'],
+  defaultLocale: 'en',
+  urlMappingStrategy: 'rewriteDefault',
+});
 
-export const createClient = (request: NextRequest) => {
-  // Create an unmodified response
-  let supabaseResponse = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
+export async function middleware(request: NextRequest) {
+  const response = handleI18nRouting(request);
 
   const supabase = createServerClient(
-    supabaseUrl!,
-    supabaseKey!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll()
+        get(name: string) {
+          return request.cookies.get(name)?.value;
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
+        set(name: string, value: string, options: CookieOptions) {
+          request.cookies.set({name, value, ...options});
+          response.cookies.set({name, value, ...options});
         },
-      },
-    },
+        remove(name: string, options: CookieOptions) {
+          request.cookies.set({name, value: '', ...options});
+          response.cookies.set({name, value: '', ...options});
+        }
+      }
+    }
   );
 
-  return supabaseResponse
-};
+  // Note: We removed the blocking supabase.auth.getUser() call that was causing hangs
+  // The cookie handlers above are sufficient to maintain session state
+  return response;
+}

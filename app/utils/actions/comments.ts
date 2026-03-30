@@ -2,11 +2,10 @@
 
 import { createClient } from "@/app/utils/supabase/server";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 export async function postComment(formData: FormData) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
   const articleId = formData.get("article_id");
   const content = formData.get("content");
 
@@ -25,7 +24,7 @@ export async function postComment(formData: FormData) {
 }
 
 export async function deleteComment(commentId: string, articleId: string) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
 
   const {
     data: { user },
@@ -38,7 +37,7 @@ export async function deleteComment(commentId: string, articleId: string) {
 }
 
 export async function updateComment(formData: FormData) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
   const commentId = formData.get("id") as string;
   const content = formData.get("content") as string;
   const articleId = formData.get("article_id") as string;
@@ -52,7 +51,7 @@ export async function updateComment(formData: FormData) {
 }
 
 export async function getCommentsbyArticleId(articleId: string) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
 
   const { data: commentsRaw } = await supabase
     .from("comments")
@@ -60,10 +59,22 @@ export async function getCommentsbyArticleId(articleId: string) {
     .eq("article_id", articleId)
     .order("created_at", { ascending: false });
 
-  let comments: any[] = [];
+  interface Comment {
+    id: string;
+    user_id: string;
+    [key: string]: unknown;
+  }
+
+  interface Profile {
+    id: string;
+    full_name: string;
+    avatar_url: string;
+  }
+
+  let comments: (Comment & { profiles?: Profile })[] = [];
   if (commentsRaw && commentsRaw.length > 0) {
     // Ambil ID user unik dari komentar untuk query efisien (IN operator)
-    const userIds = Array.from(new Set(commentsRaw.map((c: any) => c.user_id)));
+    const userIds = Array.from(new Set(commentsRaw.map((c: Comment) => c.user_id)));
 
     const { data: profiles } = await supabase
       .from("profiles")
@@ -71,9 +82,9 @@ export async function getCommentsbyArticleId(articleId: string) {
       .in("id", userIds);
 
     // Mapping cepat menggunakan Map
-    const profileMap = new Map(profiles?.map((p: any) => [p.id, p]) || []);
+    const profileMap = new Map(profiles?.map((p: Profile) => [p.id, p]) || []);
 
-    comments = commentsRaw.map((c: any) => ({
+    comments = commentsRaw.map((c: Comment) => ({
       ...c,
       profiles: profileMap.get(c.user_id),
     }));
@@ -85,7 +96,17 @@ export async function getCommentsbyArticleId(articleId: string) {
 export async function getCommentsbyArticleIds(articleIds: string[]) {
   if (!articleIds || articleIds.length === 0) return [];
 
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
+
+  interface ViewItem {
+    id: string;
+    content: string;
+    created_at: string;
+    article_title: string;
+    article_slug: string;
+    commenter_name: string;
+    commenter_avatar: string;
+  }
 
   const { data, error } = await supabase
     .from("article_view")
@@ -98,7 +119,7 @@ export async function getCommentsbyArticleIds(articleIds: string[]) {
     return [];
   }
 
-  return data.map((item: any) => ({
+  return data.map((item: ViewItem) => ({
     id: item.id,
     content: item.content,
     created_at: item.created_at,

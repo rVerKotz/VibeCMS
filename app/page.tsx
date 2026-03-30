@@ -1,11 +1,9 @@
-import { createClient } from "@/app/utils/supabase/server";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import Link from "next/link";
+import { createClient } from "@/app/utils/supabase/server";
 
 export default async function Home() {
   // 1. Inisialisasi Supabase Client
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
 
   // 2. Cek session user
   const {

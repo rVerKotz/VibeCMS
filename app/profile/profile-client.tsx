@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/app/utils/supabase/client";
 import Link from "next/link";
@@ -16,7 +17,17 @@ import {
   X
 } from "lucide-react";
 
-export default function ProfileClient({ user, profile }: { user: any, profile: any }) {
+export default function ProfileClient({ 
+  user, 
+  profile 
+}: { 
+  user: { id: string; email?: string };
+  profile: { 
+    full_name?: string; 
+    username?: string; 
+    avatar_url?: string; 
+  } | null;
+}) {
   const router = useRouter();
   const supabase = createClient();
   console.log("Profile data from server:", profile);
@@ -98,8 +109,9 @@ export default function ProfileClient({ user, profile }: { user: any, profile: a
       const { data } = supabase.storage.from('images').getPublicUrl(fileName);
       setAvatarUrl(`${data.publicUrl}?t=${new Date().getTime()}`);
       
-    } catch (error: any) {
-      console.error("Error uploading:", error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error("Error uploading:", errorMessage);
       alert("Gagal mengupload gambar. Pastikan bucket 'images' sudah dibuat dan di-set Public.");
     } finally {
       setIsUploading(false);
@@ -129,9 +141,10 @@ export default function ProfileClient({ user, profile }: { user: any, profile: a
       setUsername(formattedUsername.replace('@', ''));
       alert("Profil berhasil disimpan!");
       router.refresh();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       console.error(error);
-      alert("Gagal menyimpan profil: " + error.message);
+      alert("Gagal menyimpan profil: " + errorMessage);
     } finally {
       setIsSavingProfile(false);
     }
@@ -149,7 +162,7 @@ export default function ProfileClient({ user, profile }: { user: any, profile: a
       
       setNewPassword("");
       alert("Kata sandi berhasil diperbarui!");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
       alert("Gagal memperbarui kata sandi.");
     } finally {
@@ -168,8 +181,9 @@ export default function ProfileClient({ user, profile }: { user: any, profile: a
       
       await supabase.auth.signOut();
       router.push("/login");
-    } catch (error: any) {
-      console.error("Gagal menghapus akun:", error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error("Gagal menghapus akun:", errorMessage);
       alert("Terjadi kesalahan saat mencoba menghapus akun.");
       setIsDeleting(false);
     }
@@ -291,7 +305,7 @@ export default function ProfileClient({ user, profile }: { user: any, profile: a
                 <div className="flex flex-col md:flex-row md:items-center gap-6">
                   <div className="w-24 h-24 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center overflow-hidden shrink-0 relative group">
                     {avatarUrl ? (
-                      <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                      <Image src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" fill />
                     ) : (
                       <User size={36} className="text-zinc-400" />
                     )}

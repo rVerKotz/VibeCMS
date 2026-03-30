@@ -2,11 +2,10 @@
 
 import { createClient } from "@/app/utils/supabase/server";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 export async function getProfiles(user_id: string) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
 
   const { data: profiles } = await supabase
     .from("profiles")
@@ -18,7 +17,7 @@ export async function getProfiles(user_id: string) {
 }
 
 export async function updateProfile(formData: FormData) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
   
   // Securely get the user from the authenticated session.
   // This cannot be spoofed by a malicious client.
@@ -54,7 +53,7 @@ export async function updateProfile(formData: FormData) {
 }
 
 export async function updatePassword(formData: FormData) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient();
   
   const newPassword = formData.get("new_password") as string;
 

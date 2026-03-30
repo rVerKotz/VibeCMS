@@ -1,10 +1,10 @@
 import Link from "next/link";
+import Image from "next/image";
 import DashboardClient from "@/app/dashboard/dashboard-client";
 import { redirect } from "next/navigation";
 import { getProfiles } from "@/app/utils/actions/profiles";
+import { getCommentsbyArticleIds } from "@/app/utils/actions/comments";
 import { getArticles, getDashboardData } from "@/app/utils/actions/articles";
-import { ChevronLeft, Eye, FileCheck, FileClock, ThumbsUp } from "lucide-react";
-import { getCommentsbyArticleIds } from "@/app/utils/actions/comments.ts";
 
 interface PageProps {
   searchParams: Promise<{
@@ -16,13 +16,21 @@ interface PageProps {
   }>;
 }
 
+interface Article {
+  id: string;
+  title: string;
+  status: "draft" | "published";
+  views?: number;
+  likes?: number;
+}
+
 export default async function Page({ searchParams }: PageProps) {
   const params = await searchParams;
 
   const { user, articles: allArticles } = await getDashboardData();
   if (!user) redirect("/login");
 
-  const { articles: paginatedArticles = [], total } = await getArticles({
+  const { articles: paginatedArticles = [] } = await getArticles({
     query: params.q,
     sortBy: params.sort || "created_at",
     order: (params.order as "asc" | "desc") || "desc",
@@ -32,17 +40,17 @@ export default async function Page({ searchParams }: PageProps) {
 
   const profile = await getProfiles(user.id);
 
-  const responses = await getCommentsbyArticleIds(allArticles.map((a: any) => a.id));
+  const responses = await getCommentsbyArticleIds(allArticles.map((a: Article) => a.id));
 
   // Statistics Calculation
   const totalPublished =
-    allArticles.filter((a: any) => a.status === "published").length;
+    allArticles.filter((a: Article) => a.status === "published").length;
   const totalViews = allArticles.reduce(
-    (acc: number, curr: any) => acc + (curr.views || 0),
+    (acc: number, curr: Article) => acc + (curr.views || 0),
     0,
   );
   const totalLikes = allArticles.reduce(
-    (acc: number, curr: any) => acc + (curr.likes || 0),
+    (acc: number, curr: Article) => acc + (curr.likes || 0),
     0,
   );
 
@@ -75,6 +83,7 @@ export default async function Page({ searchParams }: PageProps) {
                     src={profile.avatar_url}
                     alt="Profile"
                     className="h-full w-full object-cover"
+                    loading="lazy"
                   />
                 )
                 : (
@@ -119,7 +128,6 @@ export default async function Page({ searchParams }: PageProps) {
         {/* The 60:40 Split Layout */}
         <DashboardClient 
           initialArticles={paginatedArticles} 
-          totalArticles={total} 
           profile={profile}
           initialResponses={responses || []}
         />

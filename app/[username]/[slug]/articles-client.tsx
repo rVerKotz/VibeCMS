@@ -1,7 +1,8 @@
 'use client'
 
-import{ useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { 
   Calendar, 
   Eye, 
@@ -13,11 +14,42 @@ import {
   Loader2
 } from "lucide-react";
 
+interface Profile {
+  full_name?: string;
+  avatar_url?: string;
+}
+
+interface Article {
+  id?: string | number;
+  title: string;
+  content?: string;
+  featured_image?: string;
+  created_at: string;
+  views?: number;
+  likes?: number;
+  profiles?: Profile;
+}
+
+interface User {
+  email?: string;
+  profile?: Profile;
+}
+
+interface Comment {
+  id: string | number;
+  user_id?: string;
+  article_id?: string | number;
+  content: string;
+  created_at: string;
+  updated_at?: string;
+  profiles?: Profile;
+  [key: string]: unknown;
+}
 
 interface ArticlesClientProps {
-  article: any;
-  comments: any[];
-  user: any;
+  article: Article;
+  comments: Comment[];
+  user: User | null;
   postCommentAction: (formData: FormData) => Promise<void>;
   incrementLikesAction?: (id: string) => Promise<void>;
 }
@@ -40,7 +72,7 @@ export default function App({
   const handleLike = () => {
     startTransition(async () => {
       try {
-        if (incrementLikesAction) {
+        if (incrementLikesAction && article.id) {
           await incrementLikesAction(article.id.toString());
         }
         setLocalLikes((prev: number) => prev + 1);
@@ -66,19 +98,19 @@ export default function App({
       {/* Navbar Minimalis */}
       <nav className="border-b border-zinc-100 dark:border-zinc-800 sticky top-0 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md z-50">
         <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
-            <a href="/" className="flex items-center gap-2 group">
+            <Link href="/" className="flex items-center gap-2 group">
                 <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
                 <span className="font-bold text-xl tracking-tighter">VibeCMS</span>
-            </a>
+            </Link>
             <div className="flex gap-4 text-sm font-medium items-center">
-          {user.profile ? (
+          {user?.profile ? (
             <Link 
               href="/profile" 
               className="w-9 h-9 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center text-xs font-bold overflow-hidden cursor-pointer hover:ring-2 hover:ring-indigo-500 transition-all shadow-sm"
               title="Pengaturan Profil"
             >
               {user.profile.avatar_url ? (
-                <img src={user.profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                <Image src={user.profile.avatar_url} alt="Profile" className="w-full h-full object-cover" fill />
               ) : (
                 user.profile.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"
               )}
@@ -115,7 +147,7 @@ export default function App({
             <div className="flex items-center justify-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden relative border border-zinc-200 dark:border-zinc-700">
                     {article.profiles?.avatar_url ? (
-                         <img src={article.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                         <Image src={article.profiles.avatar_url} alt="Author" className="w-full h-full object-cover" fill />
                     ) : (
                          <div className="w-full h-full flex items-center justify-center bg-zinc-800 text-white font-bold">
                             {article.profiles?.full_name?.[0] || "A"}
@@ -131,10 +163,11 @@ export default function App({
 
         {/* Featured Image */}
         <div className="relative aspect-video w-full rounded-2xl overflow-hidden mb-12 shadow-xl border border-zinc-200 dark:border-zinc-800">
-            <img 
+            <Image 
                 src={article.featured_image || "https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=1000"} 
                 alt={article.title} 
                 className="w-full h-full object-cover"
+                fill
             />
         </div>
 
@@ -207,9 +240,9 @@ export default function App({
             ) : (
                 <div className="p-8 bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl text-center border border-dashed border-zinc-300 dark:border-zinc-700">
                     <p className="text-zinc-500 mb-3 text-sm">Ingin ikut berdiskusi di artikel ini?</p>
-                    <a href="/login" className="inline-block px-6 py-2 bg-zinc-900 text-white dark:bg-white dark:text-black rounded-full font-bold text-xs">
+                    <Link href="/login" className="inline-block px-6 py-2 bg-zinc-900 text-white dark:bg-white dark:text-black rounded-full font-bold text-xs">
                         Login Sekarang
-                    </a>
+                    </Link>
                 </div>
             )}
 
@@ -218,11 +251,11 @@ export default function App({
                 {comments.length === 0 && (
                     <p className="text-center text-zinc-500 text-sm py-10">Belum ada komentar. Jadi yang pertama berdiskusi!</p>
                 )}
-                {comments.map((comment: any) => (
+                {comments.map((comment: Comment) => (
                     <div key={comment.id} className="flex gap-4 group">
                          <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden relative shrink-0 border border-zinc-200 dark:border-zinc-700">
                             {comment.profiles?.avatar_url ? (
-                                <img src={comment.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                                <Image src={comment.profiles.avatar_url} alt="Commenter" className="w-full h-full object-cover" fill />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-zinc-200 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-bold">
                                     {comment.profiles?.full_name?.[0] || "?"}
