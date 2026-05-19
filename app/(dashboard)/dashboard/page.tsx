@@ -1,10 +1,8 @@
 import Link from "next/link";
-import Image from "next/image";
-import DashboardClient from "@/app/dashboard/dashboard-client";
+import DashboardClient from "@/components/features/dashboard/DashboardClient.tsx";
 import { redirect } from "next/navigation";
-import { getProfiles } from "@/app/utils/actions/profiles";
-import { getCommentsbyArticleIds } from "@/app/utils/actions/comments";
-import { getArticles, getDashboardData } from "@/app/utils/actions/articles";
+import { Article } from "@/types/article.ts";
+import { ProfileAPI, CommentAPI, ArticleAPI } from "@/actions/index.ts";
 
 interface PageProps {
   searchParams: Promise<{
@@ -16,21 +14,13 @@ interface PageProps {
   }>;
 }
 
-interface Article {
-  id: string;
-  title: string;
-  status: "draft" | "published";
-  views?: number;
-  likes?: number;
-}
-
 export default async function Page({ searchParams }: PageProps) {
   const params = await searchParams;
 
-  const { user, articles: allArticles } = await getDashboardData();
+  const { user, articles: allArticles } = await ArticleAPI.getDashboardData();
   if (!user) redirect("/login");
 
-  const { articles: paginatedArticles = [] } = await getArticles({
+  const { articles: paginatedArticles = [] } = await ArticleAPI.getArticles({
     query: params.q,
     sortBy: params.sort || "created_at",
     order: (params.order as "asc" | "desc") || "desc",
@@ -38,9 +28,15 @@ export default async function Page({ searchParams }: PageProps) {
     pageSize: params.size ? parseInt(params.size) : 5,
   });
 
-  const profile = await getProfiles(user.id);
+  const profile = await ProfileAPI.getProfiles(user.id); 
+  const validArticleIds = (allArticles as Article[])
+    .map((a) => a.id)
+    .filter((id): id is string | number => id !== undefined && id !== null)
+    .map((id) => String(id));
 
-  const responses = await getCommentsbyArticleIds(allArticles.map((a: Article) => a.id));
+  const responses = validArticleIds.length > 0 
+    ? await CommentAPI.getCommentsbyArticleIds(validArticleIds) 
+    : [];
 
   // Statistics Calculation
   const totalPublished =
@@ -109,7 +105,7 @@ export default async function Page({ searchParams }: PageProps) {
             </p>
           </div>
 
-          <div className="flex gap-8 border-l border-zinc-100 dark:border-zinc-800 pl-8 hidden lg:flex">
+          <div className="gap-8 border-l border-zinc-100 dark:border-zinc-800 pl-8 hidden lg:flex">
             <div>
               <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold mb-1">
                 Total Reach
@@ -125,11 +121,12 @@ export default async function Page({ searchParams }: PageProps) {
           </div>
         </div>
 
-        {/* The 60:40 Split Layout */}
         <DashboardClient 
           initialArticles={paginatedArticles} 
           profile={profile}
           initialResponses={responses || []}
+          deleteArticleAction={ArticleAPI.deleteArticle}
+          upsertArticleAction={ArticleAPI.upsertArticle}
         />
       </main>
     </div>

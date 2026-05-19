@@ -1,10 +1,10 @@
-"use server";
+'use server';
 
-import { createClient } from "@/app/utils/supabase/server";
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server.ts";
 
-export async function postComment(formData: FormData) {
+export async function createComment(formData: FormData) {
   const supabase = await createClient();
   const articleId = formData.get("article_id");
   const content = formData.get("content");
@@ -73,7 +73,6 @@ export async function getCommentsbyArticleId(articleId: string) {
 
   let comments: (Comment & { profiles?: Profile })[] = [];
   if (commentsRaw && commentsRaw.length > 0) {
-    // Ambil ID user unik dari komentar untuk query efisien (IN operator)
     const userIds = Array.from(new Set(commentsRaw.map((c: Comment) => c.user_id)));
 
     const { data: profiles } = await supabase
@@ -81,9 +80,7 @@ export async function getCommentsbyArticleId(articleId: string) {
       .select("id, full_name, avatar_url")
       .in("id", userIds);
 
-    // Mapping cepat menggunakan Map
     const profileMap = new Map(profiles?.map((p: Profile) => [p.id, p]) || []);
-
     comments = commentsRaw.map((c: Comment) => ({
       ...c,
       profiles: profileMap.get(c.user_id),

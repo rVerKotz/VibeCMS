@@ -1,0 +1,15 @@
+{"resource":"Auth","functionName":"I","action":"READ","timestamp":"2026-05-18T19:14:44.622Z","duration":992,"status":"SUCCESS","severity":"TRAINING","anomalyScore":0}
+{"resource":"Profile","functionName":"getProfiles","action":"READ","timestamp":"2026-05-18T19:14:45.126Z","duration":489,"status":"SUCCESS","severity":"TRAINING","anomalyScore":0}
+{"resource":"Profile","functionName":"getProfiles","action":"READ","timestamp":"2026-05-18T19:16:08.983Z","duration":747,"status":"SUCCESS","severity":"TRAINING","anomalyScore":0}
+{"resource":"Profile","functionName":"getProfiles","action":"READ","timestamp":"2026-05-18T19:17:13.745Z","duration":315,"status":"SUCCESS","severity":"TRAINING","anomalyScore":0}
+{"resource":"Profile","functionName":"getProfiles","action":"READ","timestamp":"2026-05-18T19:18:02.739Z","duration":209,"status":"SUCCESS","severity":"TRAINING","anomalyScore":0}
+{"resource":"Profile","functionName":"getProfiles","action":"READ","timestamp":"2026-05-18T19:24:39.583Z","duration":451,"status":"SUCCESS","severity":"TRAINING","anomalyScore":0}
+{"resource":"Profile","functionName":"getProfiles","action":"READ","timestamp":"2026-05-18T19:24:49.435Z","duration":168,"status":"SUCCESS","severity":"TRAINING","anomalyScore":0}
+{"resource":"Auth","functionName":"I","action":"READ","timestamp":"2026-05-18T19:25:32.451Z","duration":332,"status":"SUCCESS","severity":"TRAINING","anomalyScore":0}
+{"resource":"Profile","functionName":"getProfiles","action":"READ","timestamp":"2026-05-18T19:25:32.866Z","duration":410,"status":"SUCCESS","severity":"TRAINING","anomalyScore":0}
+{"resource":"Auth","functionName":"I","action":"READ","timestamp":"2026-05-18T19:26:03.189Z","duration":224,"status":"SUCCESS","severity":"TRAINING","anomalyScore":0}
+{"resource":"Profile","functionName":"getProfiles","action":"READ","timestamp":"2026-05-18T19:26:03.396Z","duration":203,"status":"SUCCESS","severity":"TRAINING","anomalyScore":0}
+{"resource":"Profile","functionName":"getProfiles","action":"READ","timestamp":"2026-05-18T19:28:13.990Z","duration":197,"status":"SUCCESS","severity":"TRAINING","anomalyScore":0}
+{"resource":"Auth","functionName":"I","action":"READ","timestamp":"2026-05-19T04:36:07.434Z","duration":135,"status":"SUCCESS","severity":"TRAINING","anomalyScore":0}
+{"resource":"Auth","functionName":"I","action":"READ","timestamp":"2026-05-19T04:36:07.578Z","duration":120,"status":"SUCCESS","severity":"TRAINING","anomalyScore":0}
+{"resource":"Profile","functionName":"getProfiles","action":"READ","timestamp":"2026-05-19T04:36:08.433Z","duration":846,"status":"SUCCESS","severity":"TRAINING","anomalyScore":0}

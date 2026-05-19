@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useTransition } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { useState, useTransition } from "react";
 import { 
   Calendar, 
   Eye, 
@@ -13,44 +12,16 @@ import {
   ChevronLeft,
   Loader2
 } from "lucide-react";
+import { Article } from "@/types/article.ts";
+import { Comment } from "@/types/comment.ts";
+import { UserWithProfile } from "@/types/auth.ts";
 
-interface Profile {
-  full_name?: string;
-  avatar_url?: string;
-}
-
-interface Article {
-  id?: string | number;
-  title: string;
-  content?: string;
-  featured_image?: string;
-  created_at: string;
-  views?: number;
-  likes?: number;
-  profiles?: Profile;
-}
-
-interface User {
-  email?: string;
-  profile?: Profile;
-}
-
-interface Comment {
-  id: string | number;
-  user_id?: string;
-  article_id?: string | number;
-  content: string;
-  created_at: string;
-  updated_at?: string;
-  profiles?: Profile;
-  [key: string]: unknown;
-}
 
 interface ArticlesClientProps {
   article: Article;
   comments: Comment[];
-  user: User | null;
-  postCommentAction: (formData: FormData) => Promise<void>;
+  user: UserWithProfile | null;
+  createCommentAction: (formData: FormData) => Promise<void>;
   incrementLikesAction?: (id: string) => Promise<void>;
 }
 
@@ -58,7 +29,7 @@ export default function App({
   article, 
   comments = [], 
   user, 
-  postCommentAction,
+  createCommentAction,
   incrementLikesAction 
 }: ArticlesClientProps) {
   const [isPendingLike, startTransition] = useTransition();
@@ -110,7 +81,7 @@ export default function App({
               title="Pengaturan Profil"
             >
               {user.profile.avatar_url ? (
-                <Image src={user.profile.avatar_url} alt="Profile" className="w-full h-full object-cover" fill />
+                <img src={user.profile.avatar_url} alt="Profile" className="w-full h-full object-cover" loading="lazy" />
               ) : (
                 user.profile.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"
               )}
@@ -147,7 +118,7 @@ export default function App({
             <div className="flex items-center justify-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden relative border border-zinc-200 dark:border-zinc-700">
                     {article.profiles?.avatar_url ? (
-                         <Image src={article.profiles.avatar_url} alt="Author" className="w-full h-full object-cover" fill />
+                         <img src={article.profiles.avatar_url} alt="Author" className="w-full h-full object-cover" loading="lazy" />
                     ) : (
                          <div className="w-full h-full flex items-center justify-center bg-zinc-800 text-white font-bold">
                             {article.profiles?.full_name?.[0] || "A"}
@@ -163,11 +134,11 @@ export default function App({
 
         {/* Featured Image */}
         <div className="relative aspect-video w-full rounded-2xl overflow-hidden mb-12 shadow-xl border border-zinc-200 dark:border-zinc-800">
-            <Image 
+            <img 
                 src={article.featured_image || "https://images.unsplash.com/photo-1499750310107-5fef28a66643?q=80&w=1000"} 
                 alt={article.title} 
                 className="w-full h-full object-cover"
-                fill
+                loading="lazy"
             />
         </div>
 
@@ -215,7 +186,7 @@ export default function App({
             
             {user ? (
                 <form 
-                  onSubmit={(e) => { e.preventDefault(); postCommentAction(new FormData(e.currentTarget)); }}
+                  onSubmit={(e) => { e.preventDefault(); createCommentAction(new FormData(e.currentTarget)); }}
                   className="flex gap-4 items-start bg-zinc-50 dark:bg-zinc-900/30 p-6 rounded-2xl border border-zinc-100 dark:border-zinc-800"
                 >
                     <input type="hidden" name="article_id" value={article.id} />
@@ -255,7 +226,7 @@ export default function App({
                     <div key={comment.id} className="flex gap-4 group">
                          <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden relative shrink-0 border border-zinc-200 dark:border-zinc-700">
                             {comment.profiles?.avatar_url ? (
-                                <Image src={comment.profiles.avatar_url} alt="Commenter" className="w-full h-full object-cover" fill />
+                                <img src={comment.profiles.avatar_url} alt="Commenter" className="w-full h-full object-cover" loading="lazy" />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-zinc-200 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-bold">
                                     {comment.profiles?.full_name?.[0] || "?"}

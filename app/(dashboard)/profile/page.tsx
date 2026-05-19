@@ -1,7 +1,7 @@
-import { createClient } from "@/app/utils/supabase/server";
 import { redirect } from "next/navigation";
-import ProfileClient from "@/app/profile/profile-client";
-import { getProfiles } from "@/app/utils/actions/profiles";
+import { ProfileAPI } from "@/actions/index.ts";
+import { createClient } from "@/lib/supabase/server.ts";
+import ProfileClient from "@/components/features/profile/ProfileClient.tsx";
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -9,7 +9,6 @@ export default async function ProfilePage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const profile = await getProfiles(user.id);
-
+  const profile = await ProfileAPI.getProfiles(user.id);
   return <ProfileClient user={user} profile={profile} />;
 }

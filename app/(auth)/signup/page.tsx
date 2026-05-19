@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { signup } from "@/app/auth/actions";
+import { AuthAPI } from "@/actions/index.ts";
 import { GalleryVerticalEnd, ArrowLeft } from "lucide-react";
 
 export default function SignupPage() {
@@ -77,8 +77,9 @@ export default function SignupPage() {
           </div>
 
           <button
-            formAction={signup}
+            formAction={AuthAPI.signup}
             className="w-full bg-zinc-900 dark:bg-zinc-100 text-zinc-50 dark:text-zinc-900 py-2.5 rounded-lg font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-md active:scale-[0.98]"
+            type="submit"
           >
             Buat Akun Baru
           </button>

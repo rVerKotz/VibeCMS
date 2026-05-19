@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { login } from "@/app/auth/actions"; 
+import { AuthAPI } from "@/actions/index.ts"; 
 import { GalleryVerticalEnd, ArrowLeft } from "lucide-react";
 
 export default function LoginPage() {
@@ -25,7 +25,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form className="space-y-4">
+        <form className="space-y-4" action={AuthAPI.login}>
           <div className="space-y-2">
             <label
               htmlFor="email"
@@ -60,7 +60,7 @@ export default function LoginPage() {
           </div>
 
           <button
-            formAction={login}
+            type="submit"
             className="w-full bg-zinc-900 dark:bg-zinc-100 text-zinc-50 dark:text-zinc-900 py-2.5 rounded-lg font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-md active:scale-[0.98]"
           >
             Masuk ke Dashboard

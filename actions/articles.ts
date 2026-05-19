@@ -1,10 +1,10 @@
-"use server";
+'use server';
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/app/utils/supabase/server";
-import { getProfiles } from "@/app/utils/actions/profiles";
-import { getCommentsbyArticleId } from "@/app/utils/actions/comments";
+import { ArticlePayload } from "@/types/article.ts";
+import { createClient } from "@/lib/supabase/server.ts";
+import { ProfileAPI, CommentAPI } from "@/actions/index.ts";
 
 export interface GetArticlesParams {
   query?: string;
@@ -14,7 +14,7 @@ export interface GetArticlesParams {
   pageSize?: number;
 }
 
-export async function generateSlug(title: string) {
+function generateSlug(title: string) {
   const baseSlug = title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric characters with hyphens
@@ -73,16 +73,17 @@ export async function upsertArticle(formData: FormData) {
 
   if (!user) return redirect("/login");
 
-  const id = formData.get("id") as string;
-  const title = formData.get("title") as string;
-  const content = formData.get("content") as string;
-  const status = formData.get("status") as string;
-  const file = formData.get("image") as File;
-  const manualUrl = formData.get("image_url") as string; 
-  const existingUrl = formData.get("featured_image") as string;
-  const slugInput = formData.get("slug") as string;
+  const id = formData.get("id")?.toString();
+  const title = formData.get("title")?.toString() || "";
+  const content = formData.get("content")?.toString() || "";
+  const status = formData.get("status")?.toString() || "draft";
+  const file = formData.get("image") as File | null;
+  const manualUrl = formData.get("image_url")?.toString(); 
+  const existingUrl = formData.get("featured_image")?.toString();
+  const slugInput = formData.get("slug")?.toString();
 
-  let finalImageUrl = existingUrl || null;
+  // Ubah inisialisasi awal menjadi undefined (bukan string kosong "")
+  let finalImageUrl: string | undefined = existingUrl && existingUrl.trim() !== "" ? existingUrl : undefined;
 
   // 1. LOGIKA UPLOAD & CLEANUP 
   if (file && file.size > 0 && file.name !== 'undefined') {
@@ -118,17 +119,20 @@ export async function upsertArticle(formData: FormData) {
   // 3. LOGIKA SLUG
   let finalSlug = slugInput;
   if (!finalSlug || finalSlug.trim() === "") {
-    finalSlug = await generateSlug(title);
+    finalSlug = generateSlug(title);
   }
 
-  const payload = { 
+  const payload: ArticlePayload = { 
     title, 
     content, 
     status, 
-    slug: finalSlug, 
-    featured_image: finalImageUrl, 
+    slug: finalSlug,  
     user_id: user.id
   };
+
+  if (finalImageUrl) {
+    payload.featured_image = finalImageUrl;
+  }
 
   if (id && id !== "undefined" && id !== "") {
     const { error } = await supabase.from("articles").update(payload).eq("id", id).eq("user_id", user.id);
@@ -144,6 +148,7 @@ export async function upsertArticle(formData: FormData) {
 
 
 export async function getDashboardData() {
+  //await new Promise(resolve => setTimeout(resolve, 12800));
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { user: null, articles: [] };
@@ -183,12 +188,12 @@ export async function getArticleData(id: string) {
   const authUser = authRes.data.user;
   if (!articleRaw) return null;
   const [authorProfile, currentUserProfile] = await Promise.all([
-    getProfiles(articleRaw.user_id),
-    authUser ? getProfiles(authUser.id) : Promise.resolve(null)
+    ProfileAPI.getProfiles(articleRaw.user_id),
+    authUser ? ProfileAPI.getProfiles(authUser.id) : Promise.resolve(null)
   ]);
   const article = { ...articleRaw, profiles: authorProfile };
   const user = authUser ? { ...authUser, profile: currentUserProfile } : null;
-  const comments = await getCommentsbyArticleId(id);
+  const comments = await CommentAPI.getCommentsbyArticleId(id);
   return { article, comments, user };
 }
 

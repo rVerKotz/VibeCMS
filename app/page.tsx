@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/app/utils/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function Home() {
   // 1. Inisialisasi Supabase Client

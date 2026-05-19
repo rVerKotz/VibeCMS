@@ -1,10 +1,12 @@
 'use client'
 
-import React, { useState, useEffect } from "react";
-import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/app/utils/supabase/client";
 import Link from "next/link";
+import Image from "next/image";
+import { Profile } from "@/types/profile.ts";
+import { User as user } from "@/types/auth.ts";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client.ts";
 import { 
   ChevronLeft, 
   User, 
@@ -21,17 +23,11 @@ export default function ProfileClient({
   user, 
   profile 
 }: { 
-  user: { id: string; email?: string };
-  profile: { 
-    full_name?: string; 
-    username?: string; 
-    avatar_url?: string; 
-  } | null;
+  user: user;
+  profile: Profile | null;
 }) {
   const router = useRouter();
   const supabase = createClient();
-  console.log("Profile data from server:", profile);
-  console.log("User data from server:", user);
 
   // Navigation States
   const [activeTab, setActiveTab] = useState("profil");

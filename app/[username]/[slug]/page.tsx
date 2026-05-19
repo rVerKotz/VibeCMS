@@ -1,21 +1,16 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import {
-  getArticleByUsernameAndSlug,
-  getArticleData,
-  incrementLikes,
-  incrementViews,
-} from "@/app/utils/actions/articles";
-import { postComment } from "@/app/utils/actions/comments";
-import ArticlesClient from "@/app/[username]/[slug]/articles-client";
+import { Comment } from "@/types/comment.ts";
+import { ArticleAPI, CommentAPI } from "@/actions/index.ts";
+import ArticlesClient from "@/components/features/articles/ArticlesClient.tsx";
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string; slug: string }>; }): Promise<Metadata> {
   const { username, slug } = await params;
-  const article = await getArticleByUsernameAndSlug(username, slug);
+  const article = await ArticleAPI.getArticleByUsernameAndSlug(username, slug);
   if (!article) {
     notFound();
   }
-  const data = await getArticleData(article.id);
+  const data = await ArticleAPI.getArticleData(article.id);
 
   return {
     title: data?.article?.title || "Artikel",
@@ -30,12 +25,12 @@ export default async function Page({ params }: { params: Promise<{ username: str
   const username = decodeURIComponent(resolvedParams.username);
   const slug = resolvedParams.slug;
 
-  const articleData = await getArticleByUsernameAndSlug(username, slug);
+  const articleData = await ArticleAPI.getArticleByUsernameAndSlug(username, slug);
   if (!articleData) {
     notFound();
   }
-  await incrementViews(articleData.id);
-  const data = await getArticleData(articleData.id);
+  await ArticleAPI.incrementViews(articleData.id);
+  const data = await ArticleAPI.getArticleData(articleData.id);
 
   if (!data || !data.article) {
     notFound();
@@ -46,10 +41,10 @@ export default async function Page({ params }: { params: Promise<{ username: str
   return (
     <ArticlesClient
       article={article}
-      comments={comments as any || []}
+      comments={comments as Comment[] || []}
       user={user}
-      postCommentAction={postComment}
-      incrementLikesAction={incrementLikes}
+      createCommentAction={CommentAPI.createComment}
+      incrementLikesAction={ArticleAPI.incrementLikes}
     />
   );
 }

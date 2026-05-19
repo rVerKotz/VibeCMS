@@ -1,9 +1,9 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
-import { createClient } from '@/app/utils/supabase/server'
+import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
+import { createClient } from '@/lib/supabase/server.ts'
 
 // Helper to add timeout to promises
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -16,32 +16,37 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 export async function login(formData: FormData) {
-  try {
-    const supabase = await createClient()
+  let isError = false;
+  let errorMessage = '';
 
-    const email = formData.get('email') as string
-    const password = formData.get('password') as string
+  try {
+    const supabase = await createClient();
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
     
     const { error } = await withTimeout(
       supabase.auth.signInWithPassword({ email, password }),
       10000
-    )
-
-    const cookieStore = await cookies()
+    );
 
     if (error) {
-      cookieStore.set('auth_error', error.message, { maxAge: 10, path: '/' })
-      return redirect('/login')
+      isError = true;
+      errorMessage = error.message;
     }
-
-    revalidatePath('/dashboard', 'layout')
-    return redirect('/dashboard')
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Login failed'
-    const cookieStore = await cookies()
-    cookieStore.set('auth_error', message, { maxAge: 10, path: '/' })
-    return redirect('/login')
+  } catch (error: any) {
+    isError = true;
+    errorMessage = error instanceof Error ? error.message : 'Login failed';
+    console.error('Login process error:', errorMessage);
   }
+
+  if (isError) {
+    const cookieStore = await cookies();
+    cookieStore.set('auth_error', errorMessage, { maxAge: 10, path: '/' });
+    redirect('/login');
+  }
+
+  revalidatePath('/', 'layout');
+  redirect('/dashboard');
 }
 
 export async function signup(formData: FormData) {
@@ -56,7 +61,7 @@ export async function signup(formData: FormData) {
         email,
         password,
       }),
-      10000 // 10 second timeout
+      20000 // 10 second timeout
     )
 
     if (error) {
@@ -72,7 +77,7 @@ export async function signup(formData: FormData) {
       return redirect('/login')
     }
 
-    revalidatePath('/dashboard', 'layout')
+    revalidatePath('/', 'layout')
     redirect('/dashboard')
   } catch (error: unknown) {
     const cookieStore = await cookies()

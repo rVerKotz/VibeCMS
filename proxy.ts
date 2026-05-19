@@ -1,5 +1,5 @@
 import { type NextRequest } from 'next/server'
-import { middleware as _middleware } from '@/app/utils/supabase/middleware'
+import { middleware as _middleware } from '@/lib/supabase/middleware'
 
 export async function proxy(request: NextRequest) {
   return await _middleware(request)

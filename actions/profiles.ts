@@ -1,8 +1,8 @@
-"use server";
+'use server';
 
-import { createClient } from "@/app/utils/supabase/server";
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server.ts";
 
 export async function getProfiles(user_id: string) {
   const supabase = await createClient();
