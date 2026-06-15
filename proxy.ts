@@ -1,17 +1,17 @@
-import { type NextRequest } from 'next/server'
-import { middleware as _middleware } from '@/lib/supabase/middleware'
+/* ./proxy.ts */
+import { type NextRequest } from "next/server";
+import { updateSession } from "@/lib/supabase/proxy.ts";
+import { setCurrentPath } from "intelligent-audit-trail";
 
-export async function proxy(request: NextRequest) {
-  return await _middleware(request)
+export async function middleware(request: NextRequest) {
+  setCurrentPath(request.nextUrl.pathname);
+  return await updateSession(request);
 }
 
 export const config = {
   matcher: [
-    // Only run middleware on protected routes, NOT on auth routes
-    '/dashboard/:path*',
-    '/profile/:path*',
-    '/:username/:slug',
-    '/', // Home page only
-    // EXCLUDE /login, /signup - these run Server Actions that need cookies()
+    "/dashboard/:path*", 
+    "/profile/:path*", 
+    "/:username/:slug", "/"
   ],
-}
+};

@@ -2,8 +2,7 @@ import path from "path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["intelligent-audit-trail"],
-  serverExternalPackages: ["isolation-forest"],
+  serverExternalPackages: ["intelligent-audit-trail", "isolation-forest"],
   turbopack: {
     root: path.join(__dirname, "../../"),
   },

@@ -1,15 +1,9 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { AuthAPI } from "../actions/index.ts";
+import { auditPage } from "intelligent-audit-trail";
 
-export default async function Home() {
-  // 1. Inisialisasi Supabase Client
-  const supabase = await createClient();
-
-  // 2. Cek session user
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+export async function HomePage() {
+  const user = await AuthAPI.getUser();
   return (
     <div className="flex flex-col min-h-screen font-sans bg-background text-foreground selection:bg-foreground selection:text-background">
       {/* --- NAVBAR --- */}
@@ -87,7 +81,7 @@ export default async function Home() {
         </section>
 
         {/* --- FEATURES GRID --- */}
-        <section id="features" className="py-24 px-6 bg-black/[0.02] dark:bg-white/[0.02]">
+        <section id="features" className="py-24 px-6 bg-black/2 dark:bg-white/2">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-16">
               <h2 className="text-3xl font-bold tracking-tight mb-4">Semua yang Anda butuhkan</h2>
@@ -267,3 +261,5 @@ export default async function Home() {
     </div>
   );
 }
+
+export default auditPage(HomePage, { resource: "Home", functionName: "doRender" });

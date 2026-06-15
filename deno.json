@@ -1,9 +1,14 @@
 {
+  "nodeModulesDir": "manual",
+  "lint": {
+    "rules": {
+      "exclude": ["no-node-globals"]
+    }
+  },
   "imports": {
     "isolation-forest": "npm:isolation-forest@0.0.9",
     "@/": "./"
   },
-  "nodeModulesDir": "auto",
   "allowScripts": [
     "npm:sharp@0.34.5",
     "npm:unrs-resolver@1.11.1"

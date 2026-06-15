@@ -1,5 +1,4 @@
 import { createBrowserClient } from "@supabase/ssr";
-import process from "node:process";
 
 export function createClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

@@ -21,16 +21,20 @@ interface ArticlesClientProps {
   article: Article;
   comments: Comment[];
   user: UserWithProfile | null;
-  createCommentAction: (formData: FormData) => Promise<void>;
-  incrementLikesAction?: (id: string) => Promise<void>;
+  username: string;
+  slug: string;
+  incrementLikes: (articleId: string, username: string, slug: string) => Promise<void>;
+  createComment: (formData: FormData) => Promise<void>;
 }
 
 export default function App({ 
   article, 
   comments = [], 
   user, 
-  createCommentAction,
-  incrementLikesAction 
+  username,
+  slug,
+  incrementLikes,
+  createComment
 }: ArticlesClientProps) {
   const [isPendingLike, startTransition] = useTransition();
   const [copied, setCopied] = useState(false);
@@ -43,14 +47,25 @@ export default function App({
   const handleLike = () => {
     startTransition(async () => {
       try {
-        if (incrementLikesAction && article.id) {
-          await incrementLikesAction(article.id.toString());
+        if (article.id && article.profiles?.username && article.slug) {
+          await incrementLikes(
+            article.id.toString(),
+            article.profiles.username,
+            article.slug
+          );
         }
         setLocalLikes((prev: number) => prev + 1);
       } catch (error) {
         console.error("Like failed:", error);
       }
     });
+  };
+
+  // Fungsi Handle Create Comment
+  const handleCreateComment = async (formData: FormData) => {
+    formData.set("username", username);
+    formData.set("slug", slug);
+    return createComment(formData);
   };
 
   // Fungsi Handle Share
@@ -186,7 +201,7 @@ export default function App({
             
             {user ? (
                 <form 
-                  onSubmit={(e) => { e.preventDefault(); createCommentAction(new FormData(e.currentTarget)); }}
+                  onSubmit={(e) => { e.preventDefault(); handleCreateComment(new FormData(e.currentTarget)); }}
                   className="flex gap-4 items-start bg-zinc-50 dark:bg-zinc-900/30 p-6 rounded-2xl border border-zinc-100 dark:border-zinc-800"
                 >
                     <input type="hidden" name="article_id" value={article.id} />

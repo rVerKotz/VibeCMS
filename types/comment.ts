@@ -14,3 +14,15 @@ export interface Comment {
   };
   [key: string]: unknown;
 }
+
+export interface Response {
+  id: string;
+  content: string;
+  created_at: string;
+  article_id: string;
+  user_id: string;
+  commenter_name: string;
+  commenter_avatar: string;
+  article_title: string;
+  article_slug: string;
+}
